@@ -74,9 +74,10 @@ def test_polars_and_duckdb(fastq: Path) -> None:
     duckdb = pytest.importorskip("duckdb")
     pl = pytest.importorskip("polars")
 
-    assert pl.DataFrame(read_fastq(fastq)).height == 2  # noqa: PLR2004
-    r = read_fastq(fastq)  # noqa: F841
-    assert duckdb.execute("select count(*) from r").fetchall() == [(2,)]
+    assert pl.DataFrame(read_fastq(fastq)).height == 2
+    r = read_fastq(fastq)
+    duckdb.register("fastq", r)
+    assert duckdb.execute("select count(*) from fastq").fetchall() == [(2,)]
 
 
 def test_malformed(tmp_path: Path) -> None:
@@ -193,7 +194,7 @@ def test_error_in_first_row_of_batch(tmp_path: Path) -> None:
         ],
     )
     reader = pa.RecordBatchReader.from_stream(read_fastq(p, batch_size=2))
-    assert len(reader.read_next_batch()) == 2  # noqa: PLR2004
+    assert len(reader.read_next_batch()) == 2
     with pytest.raises(pa.ArrowInvalid, match="record 3"):
         reader.read_next_batch()
 
@@ -303,7 +304,7 @@ def test_gzip_truncated_keeps_good_rows_first(tmp_path: Path) -> None:
     p = tmp_path / "cut.fastq.gz"
     p.write_bytes(full[:cut])
     reader = pa.RecordBatchReader.from_stream(read_fastq(p, batch_size=100))
-    assert len(reader.read_next_batch()) == 10  # noqa: PLR2004
+    assert len(reader.read_next_batch()) == 10
     with pytest.raises(OSError, match="unexpected end of file"):
         reader.read_next_batch()
 

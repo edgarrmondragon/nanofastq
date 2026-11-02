@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 data = Path(sys.argv[1])
-runs = int(sys.argv[2]) if len(sys.argv) > 2 else 5  # noqa: PLR2004
+runs = int(sys.argv[2]) if len(sys.argv) > 2 else 5
 run_one = Path(__file__).with_name("run_one.py")
 
 IMPLS = ["nanofastq", "biobear", "nanofastq-stream", "biobear-stream"]
@@ -27,7 +27,7 @@ for name, impls in CASES:
     for impl in impls:
         res = []
         for _ in range(runs + 1):  # first run is a warm-up (page cache)
-            p = subprocess.run(  # noqa: S603
+            p = subprocess.run(
                 [sys.executable, "-I", str(run_one), impl, str(data / name)],
                 capture_output=True,
                 text=True,

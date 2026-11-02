@@ -20,7 +20,7 @@ QUALS = "".join(chr(33 + q) for q in range(41))
 
 
 def make_fastq(n_reads: int, read_len: int, *, utf8_headers: bool = False) -> bytes:
-    rng = random.Random(0)  # fixed seed: identical bytes on every run  # noqa: S311
+    rng = random.Random(0)  # fixed seed: identical bytes on every run
     out = []
     for i in range(n_reads):
         seq = "".join(rng.choices("ACGT", k=read_len))
@@ -58,7 +58,11 @@ def files(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
 
 
 @pytest.mark.parametrize("case", CASES)
-def test_read_table(benchmark: BenchmarkFixture, files, case) -> None:
+def test_read_table(
+    benchmark: BenchmarkFixture,
+    files: dict[str, Path],
+    case: str,
+) -> None:
     path = files[case]
     n_reads = CASES[case][0]
     assert benchmark(lambda: pa.table(read_fastq(path)).num_rows) == n_reads

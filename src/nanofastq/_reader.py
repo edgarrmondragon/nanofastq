@@ -25,10 +25,14 @@ class FastqReader:
         self._batch_size = batch_size
         _core.open_stream(self._path, batch_size)  # fail early if unreadable
 
-    def __arrow_c_stream__(self, requested_schema: object | None = None) -> object:
+    def __arrow_c_stream__(self, requested_schema: object | None = None) -> object:  # ruff: ignore[bad-dunder-method-name]
         return _core.open_stream(self._path, self._batch_size)
 
 
 def read_fastq(path: str | os.PathLike[str], batch_size: int = 65536) -> FastqReader:
-    """Read a FASTQ file into an nanoarrow array stream."""
+    """Read a FASTQ file into an nanoarrow array stream.
+
+    Returns:
+        An Arrow array stream.
+    """
     return FastqReader(path, batch_size)

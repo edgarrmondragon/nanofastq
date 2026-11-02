@@ -92,13 +92,32 @@ test-command = "python -c 'import nanofastq'"
 test-requires = []
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = [ "D103", "S101" ]
-"benchmarks/*" = [ "ANN001", "ANN201", "ANN202", "D103", "S101", "T201" ]
+"tests/*" = [
+  "docstring-missing-returns",
+  "magic-value-comparison",
+  "undocumented-public-function",
+]
+"benchmarks/*" = [
+  "magic-value-comparison",
+  "missing-return-type-private-function",
+  "missing-return-type-undocumented-public-function",
+  "undocumented-public-function",
+]
 [tool.ruff.lint.flake8-copyright]
 author = "Edgar Ramírez-Mondragón"
 min-file-size = 40
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 [tool.ruff.lint]
-select = [ "ALL" ]
+select = [
+  "complexity",
+  "correctness",
+  "pedantic",
+  "performance",
+  "style",
+  "suspicious",
+]
+preview = true
 
 [tool.pyproject-fmt]
 table_format = "long"

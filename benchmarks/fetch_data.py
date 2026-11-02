@@ -25,7 +25,7 @@ for url in FILES:
     gz = data / url.rsplit("/", 1)[1]
     if not gz.exists():
         print("downloading", url)
-        urllib.request.urlretrieve(url, gz)  # noqa: S310
+        urllib.request.urlretrieve(url, gz)
     plain = gz.with_suffix("")
     if not plain.exists():
         print("decompressing", gz.name)
