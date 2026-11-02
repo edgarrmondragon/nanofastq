@@ -5,7 +5,13 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(Python 3.12 COMPONENTS Interpreter Development.Module Development.SABIModule REQUIRED)
+# Build the libFuzzer target in fuzz/ instead of the Python extension. Needs clang and the
+# sanitizers; see fuzz/CMakeLists.txt.
+option(NANOFASTQ_FUZZ "Build the libFuzzer target instead of the Python extension" OFF)
+
+if(NOT NANOFASTQ_FUZZ)
+  find_package(Python 3.12 COMPONENTS Interpreter Development.Module Development.SABIModule REQUIRED)
+endif()
 find_package(ZLIB QUIET)
 if(NOT ZLIB_FOUND)
   # No system zlib (e.g. Windows): build a static copy.
@@ -22,10 +28,12 @@ if(NOT ZLIB_FOUND)
   add_library(ZLIB::ZLIB ALIAS zlibstatic)
 endif()
 
-execute_process(
-  COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
-  OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
-find_package(nanobind CONFIG REQUIRED)
+if(NOT NANOFASTQ_FUZZ)
+  execute_process(
+    COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+    OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
+  find_package(nanobind CONFIG REQUIRED)
+endif()
 
 include(FetchContent)
 FetchContent_Declare(
@@ -53,6 +61,13 @@ else()
   endif()
 endif()
 
-nanobind_add_module(_core STABLE_ABI src/module.cc)
-target_link_libraries(_core PRIVATE fastq_core)
-install(TARGETS _core LIBRARY DESTINATION .)
+if(NANOFASTQ_FUZZ)
+  # A tiny read buffer makes growth, compaction and records spanning refills reachable from the
+  # small inputs a fuzzer produces; with the default 1 MiB they would need a 1 MiB input.
+  target_compile_definitions(fastq_core PRIVATE READ_CHUNK=64)
+  add_subdirectory(fuzz)
+else()
+  nanobind_add_module(_core STABLE_ABI src/module.cc)
+  target_link_libraries(_core PRIVATE fastq_core)
+  install(TARGETS _core LIBRARY DESTINATION .)
+endif()

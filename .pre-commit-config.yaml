@@ -1,5 +1,9 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
+
+# Fuzz seeds are binary inputs whose exact bytes matter (e.g. no final newline).
+exclude: ^fuzz/corpus/
+
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0

@@ -14,6 +14,7 @@ nanofastq is a FASTQ reader written in C (nanoarrow + zlib), wrapped with nanobi
 - Test: `uv run pytest`. Every supported Python plus the type check: `tox p`.
 - Type check: `tox -e type` (mypy and ty; nothing to compile).
 - Lint and format: `pre-commit run -a`.
+- Fuzz (needs clang): the commands are in `fuzz/CMakeLists.txt`; CI runs it for 60 s on PRs that touch `src/`.
 - Benchmarks: `uv run pytest benchmarks/test_perf.py --codspeed` (only checks they run; the numbers come from CI).
 
 ## Gotchas
@@ -24,5 +25,6 @@ nanofastq is a FASTQ reader written in C (nanoarrow + zlib), wrapped with nanobi
 - Output must stay identical to biobear's (`benchmarks/check.py`).
 - Workflow actions are pinned by SHA with a `# vX.Y.Z` comment, and runner images are pinned too; Renovate updates both. zizmor (pedantic) runs in pre-commit.
 - PR titles use Conventional Commits (`feat:`, `fix:`, `ci:`, `chore(deps):`, ...). `.github/semantic.yml` enforces this, and Release Drafter derives labels, sections and version bumps from them.
+- The fuzz build shrinks `READ_CHUNK` to 64 so buffer growth is reachable, and needs `fuzzer-no-link` in `CMAKE_C_FLAGS` for the whole build; without it the fuzzer gets no coverage feedback (`cov` stays near 10).
 - Never name a branch `renovate`: it collides with the Renovate app's `renovate/*` branches.
 - CodSpeed can flag a roughly 12% "regression" on untouched code when the run landed on different hardware. Re-run before chasing it.
