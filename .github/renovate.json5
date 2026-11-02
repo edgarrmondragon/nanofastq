@@ -51,6 +51,20 @@
   // https://docs.renovatebot.com/configuration-options/#packagerules
   "packageRules": [
     {
+      "description": "CI and dev tooling updates (GitHub Actions, pre-commit hooks, dev dependency groups) are not user-facing, so keep them out of the release notes. The base preset already adds the dependencies label to every Renovate PR.",
+      "matchManagers": ["github-actions", "pre-commit"],
+      // Runner images are the exception: the built-in github-actions manager also tracks `runs-on:` and
+      // those updates should show up in the release notes, just like the ones from the regex manager.
+      "matchDatasources": ["!github-runners"],
+      "addLabels": ["skip-changelog"],
+    },
+    {
+      "description": "Dev dependency groups are not user-facing either",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "addLabels": ["skip-changelog"],
+    },
+    {
       "description": "Bump all runner labels together; leave them to manual review since a new image can shift CodSpeed's measurements",
       "matchDatasources": ["github-runners"],
       "groupName": "GitHub runner images",
