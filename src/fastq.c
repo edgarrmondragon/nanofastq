@@ -276,7 +276,7 @@ static int GetNext(struct ArrowArrayStream* stream, struct ArrowArray* out) {
   struct ArrowError nerr;
   int rc = ArrowArrayInitFromSchema(&array, &s->schema, &nerr);
   if (rc != NANOARROW_OK) {
-    snprintf(s->error, sizeof(s->error), "%s", nerr.message);
+    snprintf(s->error, sizeof(s->error), "%.200s", nerr.message);
     return rc;
   }
   if ((rc = ArrowArrayStartAppending(&array)) != NANOARROW_OK) goto fail;
@@ -312,7 +312,7 @@ static int GetNext(struct ArrowArrayStream* stream, struct ArrowArray* out) {
     return 0;  // end of stream: out->release stays NULL
   }
   if ((rc = ArrowArrayFinishBuildingDefault(&array, &nerr)) != NANOARROW_OK) {
-    snprintf(s->error, sizeof(s->error), "%s", nerr.message);
+    snprintf(s->error, sizeof(s->error), "%.200s", nerr.message);
     array.release(&array);
     return rc;
   }
