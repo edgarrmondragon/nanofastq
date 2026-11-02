@@ -126,10 +126,16 @@ static int NextLine(struct FastqState* s, size_t* off, size_t* len) {
       s->cap = new_cap;
     }
     int got = gzread(s->file, s->buf + s->end, (unsigned)(s->cap - s->end));
-    if (got < 0) {
-      int zerr;
-      snprintf(s->error, sizeof(s->error), "read error: %s", gzerror(s->file, &zerr));
-      return -1;
+    if (got <= 0) {
+      // A gzip stream that ends early (a truncated download, or a missing trailer) makes gzread
+      // return 0 and set Z_BUF_ERROR on the file; it is not a negative return. So ask before
+      // treating 0 as a clean end of file, or the missing records are dropped silently.
+      int zerr = Z_OK;
+      const char* msg = gzerror(s->file, &zerr);
+      if (got < 0 || (zerr != Z_OK && zerr != Z_STREAM_END)) {
+        snprintf(s->error, sizeof(s->error), "read error: %.200s", msg);
+        return -1;
+      }
     }
     if (got == 0) {
       if (s->pos == s->end) return 0;

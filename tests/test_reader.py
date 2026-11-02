@@ -1,4 +1,5 @@
 import gzip
+import zlib
 from pathlib import Path
 
 import pyarrow as pa
@@ -252,3 +253,98 @@ def test_structural_errors(tmp_path: Path, data: list[str], msg: str):
     write_lines(p, data)
     with pytest.raises(pa.ArrowInvalid, match=msg):
         pa.table(read_fastq(p))
+
+
+def record(i: int) -> bytes:
+    return b"@r%d\nACGT\n+\nIIII\n" % i
+
+
+def records(n: int) -> bytes:
+    return b"".join(record(i) for i in range(n))
+
+
+def gzip_flushed_per_record(n: int) -> tuple[bytes, int]:
+    """Return a gzip stream of n records, flushed after each one, and the length of the prefix
+    that ends exactly on the record boundary after n // 2 records (before any trailer)."""
+    c = zlib.compressobj(wbits=31)
+    out = b""
+    cut = 0
+    for i in range(n):
+        out += c.compress(record(i)) + c.flush(zlib.Z_SYNC_FLUSH)
+        if i == n // 2 - 1:
+            cut = len(out)
+    return out + c.flush(), cut
+
+
+def test_gzip_truncated_at_record_boundary(tmp_path: Path):
+    # A download that stopped exactly between records used to return the first half of the
+    # records without any error.
+    full, cut = gzip_flushed_per_record(20)
+    p = tmp_path / "cut.fastq.gz"
+    p.write_bytes(full[:cut])
+    with pytest.raises(OSError, match="unexpected end of file"):
+        pa.table(read_fastq(p))
+
+
+def test_gzip_truncated_keeps_good_rows_first(tmp_path: Path):
+    full, cut = gzip_flushed_per_record(20)
+    p = tmp_path / "cut.fastq.gz"
+    p.write_bytes(full[:cut])
+    reader = pa.RecordBatchReader.from_stream(read_fastq(p, batch_size=100))
+    assert len(reader.read_next_batch()) == 10
+    with pytest.raises(OSError, match="unexpected end of file"):
+        reader.read_next_batch()
+
+
+def test_gzip_missing_trailer(tmp_path: Path):
+    # All the data is there but the CRC and length trailer are cut off.
+    p = tmp_path / "notrailer.fastq.gz"
+    p.write_bytes(gzip.compress(records(100))[:-8])
+    with pytest.raises(OSError, match="unexpected end of file"):
+        pa.table(read_fastq(p))
+
+
+@pytest.mark.parametrize("keep", [0.1, 0.5, 0.9])
+def test_gzip_truncated_mid_stream(tmp_path: Path, keep: float):
+    gz = gzip.compress(records(1000))
+    p = tmp_path / "trunc.fastq.gz"
+    p.write_bytes(gz[: int(len(gz) * keep)])
+    with pytest.raises(OSError, match="unexpected end of file"):
+        pa.table(read_fastq(p))
+
+
+@pytest.mark.parametrize("what", ["flipped-byte", "bad-crc"])
+def test_gzip_corrupt(tmp_path: Path, what: str):
+    gz = bytearray(gzip.compress(records(1000)))
+    gz[len(gz) // 2 if what == "flipped-byte" else -8] ^= 0xFF
+    p = tmp_path / "corrupt.fastq.gz"
+    p.write_bytes(bytes(gz))
+    with pytest.raises(OSError, match="read error"):
+        pa.table(read_fastq(p))
+
+
+@pytest.mark.parametrize(
+    ("name", "content", "rows"),
+    [
+        pytest.param("empty.fastq", b"", 0, id="empty"),
+        pytest.param("blank.fastq", b"\n\n\n", 0, id="only-blank-lines"),
+        pytest.param("crlf.fastq", records(5).replace(b"\n", b"\r\n"), 5, id="crlf"),
+        pytest.param("nonl.fastq", records(5)[:-1], 5, id="no-trailing-newline"),
+        pytest.param("plain.fastq.gz", records(5), 5, id="plain-text-named-gz"),
+        pytest.param(
+            "multi.fastq.gz",
+            gzip.compress(records(5)) + gzip.compress(records(5)),
+            10,
+            id="concatenated-gzip-members",
+        ),
+    ],
+)
+def test_accepted_inputs(tmp_path: Path, name: str, content: bytes, rows: int):
+    p = tmp_path / name
+    p.write_bytes(content)
+    assert pa.table(read_fastq(p)).num_rows == rows
+
+
+def test_directory_is_an_error(tmp_path: Path):
+    with pytest.raises((OSError, ValueError)):
+        pa.table(read_fastq(tmp_path))
