@@ -55,6 +55,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Packages
+          path: dist
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
@@ -62,4 +66,6 @@ jobs:
         shell: bash
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
-        run: uvx --with tox-uv tox run -e "$PYTHON_VERSION"
+        # Install the sdist built above (not the checkout) so a file missing from it is caught,
+        # and so every platform builds the extension natively from what users would get.
+        run: uvx --with tox-uv tox run -e "$PYTHON_VERSION" --installpkg dist/*.tar.gz
