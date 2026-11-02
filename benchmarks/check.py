@@ -1,3 +1,7 @@
+# Copyright 2026 Edgar Ramírez-Mondragón
+
+"""Compare with biobear."""
+
 import sys
 
 import biobear as bb

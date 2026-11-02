@@ -1,12 +1,18 @@
-"""CodSpeed benchmarks: small, deterministic inputs (the simulator is slow, and counts must
+# Copyright 2026 Edgar Ramírez-Mondragón
+
+"""CodSpeed benchmarks.
+
+Small, deterministic inputs (the simulator is slow, and counts must
 be stable between runs). Run with `pytest benchmarks/test_perf.py --codspeed`.
 """
 
 import gzip
 import random
+from pathlib import Path
 
 import pyarrow as pa
 import pytest
+from pytest_codspeed import BenchmarkFixture
 
 from nanofastq import read_fastq
 
@@ -14,7 +20,7 @@ QUALS = "".join(chr(33 + q) for q in range(41))
 
 
 def make_fastq(n_reads: int, read_len: int, *, utf8_headers: bool = False) -> bytes:
-    rng = random.Random(0)  # fixed seed: identical bytes on every run
+    rng = random.Random(0)  # fixed seed: identical bytes on every run  # noqa: S311
     out = []
     for i in range(n_reads):
         seq = "".join(rng.choices("ACGT", k=read_len))
@@ -40,7 +46,7 @@ CASES = {
 
 
 @pytest.fixture(scope="session")
-def files(tmp_path_factory):
+def files(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
     d = tmp_path_factory.mktemp("fastq")
     paths = {}
     for name, (n, length, utf8, gz) in CASES.items():
@@ -52,13 +58,16 @@ def files(tmp_path_factory):
 
 
 @pytest.mark.parametrize("case", CASES)
-def test_read_table(benchmark, files, case):
+def test_read_table(benchmark: BenchmarkFixture, files, case) -> None:
     path = files[case]
     n_reads = CASES[case][0]
     assert benchmark(lambda: pa.table(read_fastq(path)).num_rows) == n_reads
 
 
-def test_stream_small_batches(benchmark, files):
+def test_stream_small_batches(
+    benchmark: BenchmarkFixture,
+    files: dict[str, Path],
+) -> None:
     """Per-batch overhead: many small batches instead of a few large ones."""
     path = files["short-plain"]
 

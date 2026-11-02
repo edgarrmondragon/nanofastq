@@ -1,3 +1,7 @@
+# Copyright 2026 Edgar Ramírez-Mondragón
+
+"""Test FASTQ reader."""
+
 import gzip
 import zlib
 from pathlib import Path
@@ -19,11 +23,11 @@ GG
 """
 
 
-def write_lines(p: Path, lines: list[str]):
-    p.write_text("\n".join(lines) + "\n")
+def write_lines(p: Path, lines: list[str]) -> None:
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_bytes(p: Path, lines: list[bytes]):
+def write_bytes(p: Path, lines: list[bytes]) -> None:
     p.write_bytes(b"\n".join(lines) + b"\n")
 
 
@@ -38,7 +42,7 @@ def fastq(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
     return p
 
 
-def test_roundtrip(fastq: Path):
+def test_roundtrip(fastq: Path) -> None:
     t = pa.table(read_fastq(fastq))
     assert t.to_pylist() == [
         {
@@ -51,38 +55,38 @@ def test_roundtrip(fastq: Path):
     ]
 
 
-def test_small_batches(fastq):
+def test_small_batches(fastq: Path) -> None:
     reader = pa.RecordBatchReader.from_stream(read_fastq(fastq, batch_size=1))
     assert [len(b) for b in reader] == [1, 1]
 
 
-def test_rescan(fastq):
+def test_rescan(fastq: Path) -> None:
     r = read_fastq(fastq)
     assert pa.table(r).equals(pa.table(r))
 
 
-def test_polars_and_duckdb(fastq):
+def test_polars_and_duckdb(fastq: Path) -> None:
     duckdb = pytest.importorskip("duckdb")
     pl = pytest.importorskip("polars")
 
-    assert pl.DataFrame(read_fastq(fastq)).height == 2
-    r = read_fastq(fastq)  # noqa: F841 (duckdb replacement scan)
+    assert pl.DataFrame(read_fastq(fastq)).height == 2  # noqa: PLR2004
+    r = read_fastq(fastq)  # noqa: F841
     assert duckdb.execute("select count(*) from r").fetchall() == [(2,)]
 
 
-def test_malformed(tmp_path: Path):
+def test_malformed(tmp_path: Path) -> None:
     p = tmp_path / "bad.fastq"
     write_lines(p, ["@r1", "ACGT", "+", "II"])  # quality too short
     with pytest.raises(pa.ArrowInvalid, match="lengths differ"):
         pa.table(read_fastq(p))
 
 
-def test_missing_file(tmp_path: Path):
+def test_missing_file(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="cannot open"):
         read_fastq(tmp_path / "nope.fastq")
 
 
-def test_utf8_header_ok(tmp_path: Path):
+def test_utf8_header_ok(tmp_path: Path) -> None:
     p = tmp_path / "u.fastq"
     p.write_bytes("@r\u00e9ad \u2603 \U0001f9ec\nAC\n+\nII\n".encode())
     write_bytes(
@@ -112,7 +116,7 @@ def test_utf8_header_ok(tmp_path: Path):
     ],
 )
 @pytest.mark.parametrize("where", ["header", "sequence", "quality"])
-def test_invalid_utf8(tmp_path: Path, bad: bytes, where: str):
+def test_invalid_utf8(tmp_path: Path, bad: bytes, where: str) -> None:
     hdr, seq, qual = b"r1", b"A" * len(bad), b"I" * len(bad)
     if where == "header":
         hdr = b"r1 " + bad
@@ -134,7 +138,7 @@ def test_invalid_utf8(tmp_path: Path, bad: bytes, where: str):
         pa.table(read_fastq(p))
 
 
-def test_good_rows_before_error_are_kept(tmp_path: Path):
+def test_good_rows_before_error_are_kept(tmp_path: Path) -> None:
     p = tmp_path / "partial.fastq"
     write_lines(
         p,
@@ -164,7 +168,7 @@ def test_good_rows_before_error_are_kept(tmp_path: Path):
         reader.read_next_batch()
 
 
-def test_error_in_first_row_of_batch(tmp_path: Path):
+def test_error_in_first_row_of_batch(tmp_path: Path) -> None:
     p = tmp_path / "first.fastq"
     write_lines(
         p,
@@ -184,12 +188,12 @@ def test_error_in_first_row_of_batch(tmp_path: Path):
         ],
     )
     reader = pa.RecordBatchReader.from_stream(read_fastq(p, batch_size=2))
-    assert len(reader.read_next_batch()) == 2
+    assert len(reader.read_next_batch()) == 2  # noqa: PLR2004
     with pytest.raises(pa.ArrowInvalid, match="record 3"):
         reader.read_next_batch()
 
 
-def test_record_spanning_buffer_refills(tmp_path: Path):
+def test_record_spanning_buffer_refills(tmp_path: Path) -> None:
     # Lines far larger than the initial buffer force compaction/realloc mid-record.
     n = 5_000_000
     p = tmp_path / "big.fastq"
@@ -248,7 +252,7 @@ def test_record_spanning_buffer_refills(tmp_path: Path):
         ),
     ],
 )
-def test_structural_errors(tmp_path: Path, data: list[str], msg: str):
+def test_structural_errors(tmp_path: Path, data: list[str], msg: str) -> None:
     p = tmp_path / "s.fastq"
     write_lines(p, data)
     with pytest.raises(pa.ArrowInvalid, match=msg):
@@ -264,8 +268,11 @@ def records(n: int) -> bytes:
 
 
 def gzip_flushed_per_record(n: int) -> tuple[bytes, int]:
-    """Return a gzip stream of n records, flushed after each one, and the length of the prefix
-    that ends exactly on the record boundary after n // 2 records (before any trailer)."""
+    """Return a gzip stream of n records.
+
+    Records are flushed after each one, and the length of the prefix
+    that ends exactly on the record boundary after n // 2 records (before any trailer).
+    """
     c = zlib.compressobj(wbits=31)
     out = b""
     cut = 0
@@ -276,9 +283,9 @@ def gzip_flushed_per_record(n: int) -> tuple[bytes, int]:
     return out + c.flush(), cut
 
 
-def test_gzip_truncated_at_record_boundary(tmp_path: Path):
-    # A download that stopped exactly between records used to return the first half of the
-    # records without any error.
+def test_gzip_truncated_at_record_boundary(tmp_path: Path) -> None:
+    # A download that stopped exactly between records used to return the first half of
+    # the records without any error.
     full, cut = gzip_flushed_per_record(20)
     p = tmp_path / "cut.fastq.gz"
     p.write_bytes(full[:cut])
@@ -286,17 +293,17 @@ def test_gzip_truncated_at_record_boundary(tmp_path: Path):
         pa.table(read_fastq(p))
 
 
-def test_gzip_truncated_keeps_good_rows_first(tmp_path: Path):
+def test_gzip_truncated_keeps_good_rows_first(tmp_path: Path) -> None:
     full, cut = gzip_flushed_per_record(20)
     p = tmp_path / "cut.fastq.gz"
     p.write_bytes(full[:cut])
     reader = pa.RecordBatchReader.from_stream(read_fastq(p, batch_size=100))
-    assert len(reader.read_next_batch()) == 10
+    assert len(reader.read_next_batch()) == 10  # noqa: PLR2004
     with pytest.raises(OSError, match="unexpected end of file"):
         reader.read_next_batch()
 
 
-def test_gzip_missing_trailer(tmp_path: Path):
+def test_gzip_missing_trailer(tmp_path: Path) -> None:
     # All the data is there but the CRC and length trailer are cut off.
     p = tmp_path / "notrailer.fastq.gz"
     p.write_bytes(gzip.compress(records(100))[:-8])
@@ -305,7 +312,7 @@ def test_gzip_missing_trailer(tmp_path: Path):
 
 
 @pytest.mark.parametrize("keep", [0.1, 0.5, 0.9])
-def test_gzip_truncated_mid_stream(tmp_path: Path, keep: float):
+def test_gzip_truncated_mid_stream(tmp_path: Path, keep: float) -> None:
     gz = gzip.compress(records(1000))
     p = tmp_path / "trunc.fastq.gz"
     p.write_bytes(gz[: int(len(gz) * keep)])
@@ -314,7 +321,7 @@ def test_gzip_truncated_mid_stream(tmp_path: Path, keep: float):
 
 
 @pytest.mark.parametrize("what", ["flipped-byte", "bad-crc"])
-def test_gzip_corrupt(tmp_path: Path, what: str):
+def test_gzip_corrupt(tmp_path: Path, what: str) -> None:
     gz = bytearray(gzip.compress(records(1000)))
     gz[len(gz) // 2 if what == "flipped-byte" else -8] ^= 0xFF
     p = tmp_path / "corrupt.fastq.gz"
@@ -339,13 +346,13 @@ def test_gzip_corrupt(tmp_path: Path, what: str):
         ),
     ],
 )
-def test_accepted_inputs(tmp_path: Path, name: str, content: bytes, rows: int):
+def test_accepted_inputs(tmp_path: Path, name: str, content: bytes, rows: int) -> None:
     p = tmp_path / name
     p.write_bytes(content)
     assert pa.table(read_fastq(p)).num_rows == rows
 
 
-def test_directory_is_an_error(tmp_path: Path):
+def test_directory_is_an_error(tmp_path: Path) -> None:
     with pytest.raises((OSError, ValueError)):
         pa.table(read_fastq(tmp_path))
 
@@ -360,7 +367,9 @@ def test_directory_is_an_error(tmp_path: Path):
             id="empty-name-with-description",
         ),
         pytest.param(
-            b"@\nAC\n+\nII\n", [("", None, "AC", "II")], id="empty-name-no-description"
+            b"@\nAC\n+\nII\n",
+            [("", None, "AC", "II")],
+            id="empty-name-no-description",
         ),
         pytest.param(b"@r\n\n+\n\n", [("r", None, "", "")], id="empty-sequence"),
         pytest.param(
@@ -377,11 +386,14 @@ def test_directory_is_an_error(tmp_path: Path):
     ],
 )
 def test_empty_values(
-    tmp_path: Path, data: bytes, expected: list[tuple], batch_size: int
-):
-    # With batch_size=1 every record is the first value of its batch, when nothing has been
-    # allocated yet. (The undefined behaviour this once hit there has no visible symptom, so it is
-    # only caught by a sanitizer; this pins down the output.)
+    tmp_path: Path,
+    data: bytes,
+    expected: list[tuple],
+    batch_size: int,
+) -> None:
+    # With batch_size=1 every record is the first value of its batch, when nothing has
+    # been allocated yet. (The undefined behaviour this once hit there has no visible
+    # symptom, so it is only caught by a sanitizer; this pins down the output.)
     p = tmp_path / "empty.fastq"
     p.write_bytes(data)
     rows = pa.table(read_fastq(p, batch_size=batch_size)).to_pylist()
