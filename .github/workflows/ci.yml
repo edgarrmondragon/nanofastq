@@ -13,12 +13,14 @@ on:
       - AGENTS.md
       - .pre-commit-config.yaml
       - .github/renovate.json5
+      - .github/workflows/codspeed.yml
       - benchmarks/**
   pull_request:
     paths-ignore:
       - AGENTS.md
       - .pre-commit-config.yaml
       - .github/renovate.json5
+      - .github/workflows/codspeed.yml
       - benchmarks/**
   workflow_dispatch:
   schedule:
