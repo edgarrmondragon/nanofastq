@@ -30,12 +30,15 @@ uv run pytest benchmarks/test_perf.py --codspeed
 ## Releasing
 
 The version is derived from git tags with [setuptools-scm]; there is no version to edit in
-`pyproject.toml`. To release, publish a GitHub release that creates a new `vX.Y.Z` tag. That
-builds the wheels and uploads them to PyPI (see `.github/workflows/wheels.yml`). Untagged
-commits get development versions such as `0.1.dev12+gabc1234`.
+`pyproject.toml`. [Release Drafter] keeps a draft GitHub release up to date from merged pull
+requests (their labels pick the section and the next version). To release, review the draft and
+publish it: that creates the `vX.Y.Z` tag, builds the wheels and uploads them to PyPI (see
+`.github/workflows/wheels.yml`). Untagged commits get development versions such as
+`0.1.dev12+gabc1234`.
 
 [codspeed]: https://codspeed.io
 [fastq]: https://en.wikipedia.org/wiki/FASTQ_format
+[release drafter]: https://github.com/release-drafter/release-drafter
 [setuptools-scm]: https://setuptools-scm.readthedocs.io
 [tox]: https://tox.wiki
 [ty]: https://docs.astral.sh/ty/
