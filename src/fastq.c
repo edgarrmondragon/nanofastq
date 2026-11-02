@@ -77,6 +77,21 @@ static int IsValidUtf8(const char* data, size_t n) {
   return 1;
 }
 
+// True if every byte is < 0x80. Written as a branch-free OR-reduction so the compiler
+// can vectorize it.
+static int IsAscii(const char* data, size_t n) {
+  uint64_t acc = 0;
+  size_t i = 0;
+  for (; i + 8 <= n; i += 8) {
+    uint64_t w;
+    memcpy(&w, data + i, 8);
+    acc |= w;
+  }
+  unsigned char tail = 0;
+  for (; i < n; i++) tail |= (unsigned char)data[i];
+  return ((acc & 0x8080808080808080ULL) | (tail & 0x80)) == 0;
+}
+
 // Returns 1 with the line's offset into buf and length (without the trailing \n or
 // \r\n), 0 on EOF, -1 on error. Offsets, unlike pointers, survive later calls as long
 // as they are taken relative to s->pin.
@@ -189,6 +204,9 @@ static int ParseRecordLines(struct FastqState* s, struct Record* r) {
   r->seq_len = len[1];
   r->qual = base + rel[3];
 
+  // The four lines are contiguous in the buffer, so one pass over the whole record
+  // settles the (overwhelmingly common) pure-ASCII case; only otherwise check per field.
+  if (IsAscii(base, rel[3] + len[3])) return 1;
   if (!IsValidUtf8(r->name, r->name_len) || (r->desc && !IsValidUtf8(r->desc, r->desc_len))) {
     return Fail(s, "record %lld: header is not valid UTF-8", s->record_no);
   }
@@ -201,23 +219,41 @@ static int ParseRecordLines(struct FastqState* s, struct Record* r) {
   return 1;
 }
 
+// Appends one value to a non-nullable utf8 column by writing its offset and data buffers
+// directly. This skips ArrowArrayAppendString's type dispatch and validity-bitmap handling,
+// which are pure overhead for columns that can never hold a null (no bitmap is allocated).
+static inline int AppendNonNull(struct ArrowArray* col, const char* data, size_t n) {
+  struct ArrowBuffer* offsets = ArrowArrayBuffer(col, 1);
+  struct ArrowBuffer* values = ArrowArrayBuffer(col, 2);
+  if (values->size_bytes + (int64_t)n > INT32_MAX) return EOVERFLOW;
+  int rc = ArrowBufferReserve(offsets, (int64_t)sizeof(int32_t));
+  if (rc != NANOARROW_OK) return rc;
+  if ((rc = ArrowBufferReserve(values, (int64_t)n)) != NANOARROW_OK) return rc;
+  memcpy(values->data + values->size_bytes, data, n);
+  values->size_bytes += (int64_t)n;
+  int32_t end = (int32_t)values->size_bytes;
+  memcpy(offsets->data + offsets->size_bytes, &end, sizeof(end));
+  offsets->size_bytes += (int64_t)sizeof(end);
+  col->length++;
+  return NANOARROW_OK;
+}
+
 static int AppendRecord(struct ArrowArray* array, const struct Record* r) {
   int rc;
-  struct ArrowStringView sv;
-  sv = (struct ArrowStringView){r->name, (int64_t)r->name_len};
-  if ((rc = ArrowArrayAppendString(array->children[0], sv)) != NANOARROW_OK) return rc;
+  if ((rc = AppendNonNull(array->children[0], r->name, r->name_len)) != NANOARROW_OK) return rc;
   if (r->desc) {
-    sv = (struct ArrowStringView){r->desc, (int64_t)r->desc_len};
-    rc = ArrowArrayAppendString(array->children[1], sv);
+    struct ArrowStringView dv = {r->desc, (int64_t)r->desc_len};
+    rc = ArrowArrayAppendString(array->children[1], dv);
   } else {
     rc = ArrowArrayAppendNull(array->children[1], 1);
   }
   if (rc != NANOARROW_OK) return rc;
-  sv = (struct ArrowStringView){r->seq, (int64_t)r->seq_len};
-  if ((rc = ArrowArrayAppendString(array->children[2], sv)) != NANOARROW_OK) return rc;
-  sv = (struct ArrowStringView){r->qual, (int64_t)r->seq_len};
-  if ((rc = ArrowArrayAppendString(array->children[3], sv)) != NANOARROW_OK) return rc;
-  return ArrowArrayFinishElement(array);
+  if ((rc = AppendNonNull(array->children[2], r->seq, r->seq_len)) != NANOARROW_OK) return rc;
+  if ((rc = AppendNonNull(array->children[3], r->qual, r->seq_len)) != NANOARROW_OK) return rc;
+  // Equivalent to ArrowArrayFinishElement for a struct; the children's lengths are
+  // validated once per batch by ArrowArrayFinishBuildingDefault.
+  array->length++;
+  return NANOARROW_OK;
 }
 
 static int GetSchema(struct ArrowArrayStream* stream, struct ArrowSchema* out) {

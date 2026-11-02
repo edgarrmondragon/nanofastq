@@ -22,10 +22,10 @@ to build a full Arrow table:
 
 | File | nanofastq | biobear | Floor |
 |---|---|---|---|
-| SRR1770413 `.gz` (643k × ~120 bp) | 0.50 s | 1.23 s | 0.36 s |
-| SRR1770413 plain | 0.19 s | 0.56 s | 0.03 s |
-| SRR390728 `.gz` (7.2M × 36 bp) | 1.02 s | 2.33 s | 0.33 s |
-| SRR390728 plain | 0.81 s | 1.98 s | 0.04 s |
+| SRR1770413 `.gz` (643k × ~120 bp) | 0.45 s | 1.22 s | 0.37 s |
+| SRR1770413 plain | 0.14 s | 0.47 s | 0.02 s |
+| SRR390728 `.gz` (7.2M × 36 bp) | 0.82 s | 2.29 s | 0.30 s |
+| SRR390728 plain | 0.60 s | 1.99 s | 0.04 s |
 
 Streaming batch by batch gives the same ratios. Neither reader used more than one core.
 One machine and two files: treat the ratios as indicative, not general.
