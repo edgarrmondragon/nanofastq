@@ -51,7 +51,12 @@ def test_roundtrip(fastq: Path) -> None:
             "sequence": "ACGT",
             "quality_scores": "IIII",
         },
-        {"name": "r2", "description": None, "sequence": "GG", "quality_scores": "#!"},
+        {
+            "name": "r2",
+            "description": None,
+            "sequence": "GG",
+            "quality_scores": "#!",
+        },
     ]
 
 
