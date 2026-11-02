@@ -1,6 +1,7 @@
 # nanofastq
 
 [![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/edgarrmondragon/nanofastq)
+[![Python Versions](https://img.shields.io/pypi/pyversions/nanofastq.svg?logo=python&logoColor=FFE873)](https://pypi.org/project/nanofastq/)
 
 Tiny [FASTQ] reader (C + nanoarrow) exposing `__arrow_c_stream__`.
 
