@@ -377,7 +377,11 @@ def test_directory_is_an_error(tmp_path: Path) -> None:
             [("", None, "AC", "II")],
             id="empty-name-no-description",
         ),
-        pytest.param(b"@r\n\n+\n\n", [("r", None, "", "")], id="empty-sequence"),
+        pytest.param(
+            b"@r\n\n+\n\n",
+            [("r", None, "", "")],
+            id="empty-sequence",
+        ),
         pytest.param(
             b"@r\n\n+\n\n@s\nAC\n+\nII\n",
             [("r", None, "", ""), ("s", None, "AC", "II")],
@@ -388,13 +392,17 @@ def test_directory_is_an_error(tmp_path: Path) -> None:
             [("s", None, "AC", "II"), ("r", None, "", "")],
             id="normal-then-empty-sequence",
         ),
-        pytest.param(b"@\n\n+\n\n", [("", None, "", "")], id="all-empty"),
+        pytest.param(
+            b"@\n\n+\n\n",
+            [("", None, "", "")],
+            id="all-empty",
+        ),
     ],
 )
 def test_empty_values(
     tmp_path: Path,
     data: bytes,
-    expected: list[tuple],
+    expected: list[tuple[str, str | None, str, str]],
     batch_size: int,
 ) -> None:
     # With batch_size=1 every record is the first value of its batch, when nothing has
