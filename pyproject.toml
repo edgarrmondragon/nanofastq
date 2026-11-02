@@ -91,6 +91,15 @@ select = "*-musllinux*"
 test-command = "python -c 'import nanofastq'"
 test-requires = []
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [ "D103", "S101" ]
+"benchmarks/*" = [ "ANN001", "ANN201", "ANN202", "D103", "S101", "T201" ]
+[tool.ruff.lint.flake8-copyright]
+author = "Edgar Ramírez-Mondragón"
+min-file-size = 40
+[tool.ruff.lint]
+select = [ "ALL" ]
+
 [tool.pyproject-fmt]
 table_format = "long"
 
@@ -104,8 +113,7 @@ env_list = [
   "type",
 ]
 [tool.tox.env.type]
-description = "type check with ty"
-# ty reads src/ and the _core.pyi stub directly, so nothing needs compiling.
+description = "type check"
 package = "skip"
 dependency_groups = [ "dev" ]
 commands = [

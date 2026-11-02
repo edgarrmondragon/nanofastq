@@ -1,9 +1,12 @@
+# Copyright 2026 Edgar Ramírez-Mondragón
+
 """Run one implementation once in this process; print a JSON line.
 
 Imports happen before the timer starts and are reported separately.
 """
 
 import json
+import pathlib
 import resource
 import sys
 import time
@@ -36,17 +39,18 @@ def run():
     if impl == "inflate-only":  # floor: just decompress (system zlib), no parsing
         n = 0
         d = zlib.decompressobj(31)
-        with open(path, "rb") as f:
+        with pathlib.Path(path).open("rb") as f:
             while chunk := f.read(1 << 20):
                 n += len(d.decompress(chunk))
         return n
     if impl == "read-only":  # floor for uncompressed: just read the bytes
         n = 0
-        with open(path, "rb") as f:
+        with pathlib.Path(path).open("rb") as f:
             while chunk := f.read(1 << 20):
                 n += len(chunk)
         return n
-    raise SystemExit(f"unknown impl {impl}")
+    msg = f"unknown impl {impl}"
+    raise SystemExit(msg)
 
 
 ru0 = resource.getrusage(resource.RUSAGE_SELF)
@@ -66,6 +70,6 @@ print(
             "rss_mb": ru1.ru_maxrss / rss_div,
             "imp": t_imp,
             "out": out,
-        }
-    )
+        },
+    ),
 )
