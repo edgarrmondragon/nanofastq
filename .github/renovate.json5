@@ -70,6 +70,12 @@
       "addLabels": ["skip-changelog"],
     },
     {
+      "description": "C libraries compiled into the wheel (nanoarrow, zlib) ship to users, so their bumps are fixes, not chores. Renovate only treats declared runtime dependencies that way, and this project has none.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["CMakeLists.txt"],
+      "semanticCommitType": "fix",
+    },
+    {
       "description": "Bump all runner labels together; leave them to manual review since a new image can shift CodSpeed's measurements",
       "matchDatasources": ["github-runners"],
       "groupName": "GitHub runner images",
