@@ -23,6 +23,10 @@ struct FastqState {
   size_t pin;
   // Error found after good rows were already built: reported on the next get_next.
   int pending_rc;
+  // A read failed (e.g. truncated gzip) but the data returned with it is still being consumed.
+  // NextLine reports `read_error` once the buffered bytes run out.
+  int read_failed;
+  char read_error[256];
   struct ArrowSchema schema;
   char error[256];
 };
@@ -31,6 +35,12 @@ struct FastqState {
 static int Fail(struct FastqState* s, const char* fmt, long long n) {
   snprintf(s->error, sizeof(s->error), fmt, n);
   return -EINVAL;
+}
+
+// Reports a read failure that was deferred until the bytes read before it were consumed.
+static int ReadFailed(struct FastqState* s) {
+  memcpy(s->error, s->read_error, sizeof(s->error));
+  return -1;
 }
 
 // Strict UTF-8 check (rejects overlongs, surrogates and code points > U+10FFFF).
@@ -107,6 +117,7 @@ static int NextLine(struct FastqState* s, size_t* off, size_t* len) {
       *len = n;
       return 1;
     }
+    if (s->read_failed) return ReadFailed(s);  // the bytes read before the failure are used up
     // Need more data: compact (keeping the pinned record), grow, then refill.
     size_t from = s->pin < s->pos ? s->pin : s->pos;
     if (from > 0) {
@@ -126,10 +137,22 @@ static int NextLine(struct FastqState* s, size_t* off, size_t* len) {
       s->cap = new_cap;
     }
     int got = gzread(s->file, s->buf + s->end, (unsigned)(s->cap - s->end));
-    if (got < 0) {
-      int zerr;
-      snprintf(s->error, sizeof(s->error), "read error: %s", gzerror(s->file, &zerr));
-      return -1;
+    // Ask for the error status after every read, not only after a short or empty one. A gzip
+    // stream that ends early (a truncated download, or a missing trailer) makes gzread return
+    // what it has, with Z_BUF_ERROR set on the file rather than a negative return. zlib 1.3.1
+    // and older leave that error in place, but 1.3.2 clears it at the start of the next call, so
+    // by the time gzread returns 0 it is gone and the missing records would be dropped silently.
+    int zerr = Z_OK;
+    const char* msg = gzerror(s->file, &zerr);
+    if (got < 0 || (zerr != Z_OK && zerr != Z_STREAM_END)) {
+      if (got <= 0) {
+        snprintf(s->error, sizeof(s->error), "read error: %.200s", msg);
+        return -1;
+      }
+      // The same call also returned data. Keep it so the records before the failure are still
+      // delivered, and raise the error once they have been consumed.
+      snprintf(s->read_error, sizeof(s->read_error), "read error: %.200s", msg);
+      s->read_failed = 1;
     }
     if (got == 0) {
       if (s->pos == s->end) return 0;
@@ -285,6 +308,12 @@ static int GetNext(struct ArrowArrayStream* stream, struct ArrowArray* out) {
   while (n < s->batch_size) {
     struct Record rec;
     int got = ParseRecordLines(s, &rec);
+    if (got < 0 && s->read_failed) {
+      // Bytes decoded just before a corrupt or truncated stretch can be garbage, so a parse error
+      // here is most likely a consequence of the read failure: report that instead.
+      ReadFailed(s);
+      got = -EIO;
+    }
     if (got == 0) {
       s->done = 1;
       break;
