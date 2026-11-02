@@ -51,6 +51,7 @@ jobs:
         with:
           # The lowest supported Python: the abi3 wheel built here must run on all newer ones.
           python-version: ${{ fromJson(needs.build-package.outputs.supported-python-versions)[0] }}
+          enable-cache: false  # no checkout here, so there is nothing to key the cache on
       - name: Build wheel from the sdist
         shell: bash
         run: uv build --wheel --out-dir wheelhouse dist/*.tar.gz
