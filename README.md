@@ -17,5 +17,5 @@ Run tests (requires [Tox]):
 tox p
 ```
 
-[FASTQ]: https://en.wikipedia.org/wiki/FASTQ_format/
-[Tox]: https://tox.wiki/
+[FASTQ]: https://en.wikipedia.org/wiki/FASTQ_format
+[Tox]: https://tox.wiki
