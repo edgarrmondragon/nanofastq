@@ -55,13 +55,15 @@ out = run()
 wall = time.perf_counter() - t0
 ru1 = resource.getrusage(resource.RUSAGE_SELF)
 cpu = (ru1.ru_utime - ru0.ru_utime) + (ru1.ru_stime - ru0.ru_stime)
+# ru_maxrss is in bytes on macOS and in KiB on Linux.
+rss_div = 1e6 if sys.platform == "darwin" else 1e3
 print(
     json.dumps(
         {
             "impl": impl,
             "wall": wall,
             "cpu": cpu,
-            "rss_mb": ru1.ru_maxrss / 1e6,
+            "rss_mb": ru1.ru_maxrss / rss_div,
             "imp": t_imp,
             "out": out,
         }

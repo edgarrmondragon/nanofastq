@@ -27,5 +27,10 @@ to build a full Arrow table:
 | SRR390728 `.gz` (7.2M × 36 bp) | 0.82 s | 2.29 s | 0.30 s |
 | SRR390728 plain | 0.60 s | 1.99 s | 0.04 s |
 
+On Linux aarch64 (Docker VM on the same Mac, Python 3.13, gzipped files only because plain
+files read through the bind mount are I/O-bound), the same comparison gives 0.75 s vs 1.70 s
+(SRR1770413) and 1.11 s vs 3.44 s (SRR390728). Absolute times in a VM vary by ~20% between
+runs.
+
 Streaming batch by batch gives the same ratios. Neither reader used more than one core.
 One machine and two files: treat the ratios as indicative, not general.
