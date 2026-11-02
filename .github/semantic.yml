@@ -1,2 +1,15 @@
 enabled: true
 titleOnly: true
+types:
+- ci
+- chore
+- build
+- docs
+- feat
+- fix
+- packaging
+- perf
+- refactor
+- revert
+- style
+- test
