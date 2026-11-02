@@ -7,7 +7,6 @@ requires = [
 
 [project]
 name = "nanofastq"
-version = "0.0.1"
 description = "Tiny, dependency-free FASTQ reader that exposes the Arrow PyCapsule stream interface."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,6 +17,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
 ]
+dynamic = [ "version" ]
 dependencies = []
 
 [dependency-groups]
@@ -30,6 +30,9 @@ dev = [
   "pytest-codspeed>=5.0.4",
 ]
 
+# Version comes from the latest git tag (e.g. v0.1.0); see "Releasing" in the README.
+[tool.setuptools_scm]
+
 [tool.scikit-build]
 [tool.scikit-build.cmake]
 build-type = "Release"
@@ -40,9 +43,16 @@ exclude = [ ".github" ]
 install-dir = "nanofastq"
 py-api = "cp312"
 packages = [ "src/nanofastq" ]
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.setuptools_scm"
 
 [tool.uv]
-cache-keys = [ { file = "pyproject.toml" }, { file = "CMakeLists.txt" }, { file = "src/**/*.{c,h,cc}" } ]
+cache-keys = [
+  { git = { commit = true, tags = true } },
+  { file = "pyproject.toml" },
+  { file = "CMakeLists.txt" },
+  { file = "src/**/*.{c,h,cc}" },
+]
 
 [tool.cibuildwheel]
 # One abi3 wheel (cp312-abi3) per platform covers every supported Python.
