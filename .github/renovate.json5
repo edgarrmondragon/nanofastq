@@ -5,6 +5,11 @@
   "extends": [
     // https://github.com/edgarrmondragon/.github/blob/main/renovate/python.json5
     "edgarrmondragon/.github//renovate/python.json5",
+
+    // PR titles must be Conventional Commits (see .github/semantic.yml). The repo's history mixes
+    // styles, so Renovate's "auto" detection would leave this off.
+    // https://docs.renovatebot.com/presets-default/#semanticcommits
+    ":semanticCommits",
   ],
 
   // https://docs.renovatebot.com/configuration-options/#reviewers
