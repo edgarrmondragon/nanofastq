@@ -348,3 +348,44 @@ def test_accepted_inputs(tmp_path: Path, name: str, content: bytes, rows: int):
 def test_directory_is_an_error(tmp_path: Path):
     with pytest.raises((OSError, ValueError)):
         pa.table(read_fastq(tmp_path))
+
+
+@pytest.mark.parametrize("batch_size", [1, 65536])
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        pytest.param(
+            b"@ desc\nAC\n+\nII\n",
+            [("", "desc", "AC", "II")],
+            id="empty-name-with-description",
+        ),
+        pytest.param(
+            b"@\nAC\n+\nII\n", [("", None, "AC", "II")], id="empty-name-no-description"
+        ),
+        pytest.param(b"@r\n\n+\n\n", [("r", None, "", "")], id="empty-sequence"),
+        pytest.param(
+            b"@r\n\n+\n\n@s\nAC\n+\nII\n",
+            [("r", None, "", ""), ("s", None, "AC", "II")],
+            id="empty-sequence-then-normal",
+        ),
+        pytest.param(
+            b"@s\nAC\n+\nII\n@r\n\n+\n\n",
+            [("s", None, "AC", "II"), ("r", None, "", "")],
+            id="normal-then-empty-sequence",
+        ),
+        pytest.param(b"@\n\n+\n\n", [("", None, "", "")], id="all-empty"),
+    ],
+)
+def test_empty_values(
+    tmp_path: Path, data: bytes, expected: list[tuple], batch_size: int
+):
+    # With batch_size=1 every record is the first value of its batch, when nothing has been
+    # allocated yet. (The undefined behaviour this once hit there has no visible symptom, so it is
+    # only caught by a sanitizer; this pins down the output.)
+    p = tmp_path / "empty.fastq"
+    p.write_bytes(data)
+    rows = pa.table(read_fastq(p, batch_size=batch_size)).to_pylist()
+    got = [
+        (r["name"], r["description"], r["sequence"], r["quality_scores"]) for r in rows
+    ]
+    assert got == expected
