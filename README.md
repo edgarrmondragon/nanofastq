@@ -1,6 +1,6 @@
 # nanofastq
 
-Tiny FASTQ reader (C + nanoarrow) exposing `__arrow_c_stream__`.
+Tiny [FASTQ] reader (C + nanoarrow) exposing `__arrow_c_stream__`.
 
 ```python
 import pyarrow as pa
@@ -11,8 +11,11 @@ table = pa.table(read_fastq("reads.fastq.gz"))
 
 ## Development
 
-Run tests (requires [Tox](https://tox.wiki/)):
+Run tests (requires [Tox]):
 
 ```
 tox p
 ```
+
+[FASTQ]: https://en.wikipedia.org/wiki/FASTQ_format/
+[Tox]: https://tox.wiki/
