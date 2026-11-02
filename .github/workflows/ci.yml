@@ -4,9 +4,22 @@ permissions:
   contents: read
 
 on:
+  # Skip runs for changes that cannot affect what CI checks. This is an ignore list on purpose:
+  # a new file runs CI by default. README.md is deliberately not ignored (the build job
+  # renders it with twine), and benchmarks/ is covered by the CodSpeed workflow.
   push:
     branches: [main]
+    paths-ignore:
+      - AGENTS.md
+      - .pre-commit-config.yaml
+      - .github/renovate.json5
+      - benchmarks/**
   pull_request:
+    paths-ignore:
+      - AGENTS.md
+      - .pre-commit-config.yaml
+      - .github/renovate.json5
+      - benchmarks/**
   workflow_dispatch:
   schedule:
     # Catch breakage from new dependency releases (pyarrow, polars, duckdb, ...).
