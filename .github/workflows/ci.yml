@@ -31,6 +31,8 @@ jobs:
           persist-credentials: false
       - uses: hynek/build-and-inspect-python-package@67230f7b8410ae0052b39c1efc89d89fff43ff10 # v3.0.2
         id: baipp
+        with:
+          skip-wheel: true
 
   test:
     name: pytest, Python ${{ matrix.python-version }} on ${{ matrix.os }}
