@@ -252,7 +252,9 @@ static inline int AppendNonNull(struct ArrowArray* col, const char* data, size_t
   int rc = ArrowBufferReserve(offsets, (int64_t)sizeof(int32_t));
   if (rc != NANOARROW_OK) return rc;
   if ((rc = ArrowBufferReserve(values, (int64_t)n)) != NANOARROW_OK) return rc;
-  memcpy(values->data + values->size_bytes, data, n);
+  // An empty value (e.g. an empty read name) can arrive before anything has been allocated, when
+  // values->data is still NULL; NULL + 0 and memcpy(NULL, ..., 0) are undefined behaviour in C.
+  if (n) memcpy(values->data + values->size_bytes, data, n);
   values->size_bytes += (int64_t)n;
   int32_t end = (int32_t)values->size_bytes;
   memcpy(offsets->data + offsets->size_bytes, &end, sizeof(end));
