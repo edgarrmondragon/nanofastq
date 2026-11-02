@@ -1,0 +1,72 @@
+[build-system]
+build-backend = "scikit_build_core.build"
+requires = [
+  "nanobind>=2",
+  "scikit-build-core>=0.10",
+]
+
+[project]
+name = "nanofastq"
+version = "0.0.1"
+description = "Tiny, dependency-free FASTQ reader that exposes the Arrow PyCapsule stream interface."
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+]
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "duckdb",
+  "polars",
+  "pyarrow",
+  "pyarrow-stubs>=20.0.0.20260819",
+  "pytest",
+]
+
+[tool.scikit-build]
+[tool.scikit-build.cmake]
+build-type = "Release"
+version = ">=3.28"
+[tool.scikit-build.sdist]
+exclude = [ ".github" ]
+[tool.scikit-build.wheel]
+install-dir = "nanofastq"
+py-api = "cp312"
+packages = [ "src/nanofastq" ]
+
+[tool.uv]
+cache-keys = [ { file = "pyproject.toml" }, { file = "CMakeLists.txt" }, { file = "src/**/*.{c,h,cc}" } ]
+
+[tool.cibuildwheel]
+# One abi3 wheel (cp312-abi3) per platform covers every supported Python.
+build = "cp312-*"
+skip = "*-win32 *_i686"
+test-command = "pytest {project}/tests"
+test-requires = [ "pytest", "pyarrow", "polars", "duckdb" ]
+[[tool.cibuildwheel.overrides]]
+# pyarrow has no musllinux wheels, so only smoke-test the import there.
+select = "*-musllinux*"
+test-command = "python -c 'import nanofastq'"
+test-requires = []
+
+[tool.pyproject-fmt]
+table_format = "long"
+
+[tool.pytest]
+minversion = "9"
+testpaths = [ "tests" ]
+
+[tool.tox]
+env_list = [
+  { prefix = "3.", start = 12, stop = 15 },
+]
+[tool.tox.env_run_base]
+description = "run tests on Python {py_dot_ver}"
+dependency_groups = [ "dev" ]
+commands = [ [ "pytest", { replace = "posargs", extend = true, substitute = true } ] ]
