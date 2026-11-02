@@ -23,7 +23,7 @@ class FastqReader:
         self._batch_size = batch_size
         _core.open_stream(self._path, batch_size)  # fail early if unreadable
 
-    def __arrow_c_stream__(self, requested_schema=None):
+    def __arrow_c_stream__(self, requested_schema: object | None = None) -> object:
         return _core.open_stream(self._path, self._batch_size)
 
 

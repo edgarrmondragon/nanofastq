@@ -23,11 +23,13 @@ dependencies = []
 [dependency-groups]
 dev = [
   "duckdb",
+  "mypy",
   "polars",
   "pyarrow",
   "pyarrow-stubs>=20.0.0.20260819",
   "pytest",
   "pytest-codspeed>=5.0.4",
+  "ty",
 ]
 
 # Version comes from the latest git tag (e.g. v0.1.0); see "Releasing" in the README.
@@ -76,6 +78,16 @@ testpaths = [ "tests" ]
 [tool.tox]
 env_list = [
   { prefix = "3.", start = 12, stop = 15 },
+  "type",
+]
+[tool.tox.env.type]
+description = "type check with ty"
+# ty reads src/ and the _core.pyi stub directly, so nothing needs compiling.
+package = "skip"
+dependency_groups = [ "dev" ]
+commands = [
+  [ "mypy", "src", "tests" ],
+  [ "ty", "check", "src", "tests" ],
 ]
 [tool.tox.env_run_base]
 description = "run tests on Python {py_dot_ver}"
