@@ -13,7 +13,7 @@ table = pa.table(read_fastq("reads.fastq.gz"))
 
 ## Development
 
-Run tests (requires [Tox]):
+Run the tests and the type check with [ty] (requires [Tox]):
 
 ```
 tox p
@@ -37,3 +37,4 @@ commits get development versions such as `0.1.dev12+gabc1234`.
 [fastq]: https://en.wikipedia.org/wiki/FASTQ_format
 [setuptools-scm]: https://setuptools-scm.readthedocs.io
 [tox]: https://tox.wiki
+[ty]: https://docs.astral.sh/ty/
