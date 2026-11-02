@@ -1,0 +1,67 @@
+name: Fuzz
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - fuzz/**
+      - CMakeLists.txt
+      - .github/workflows/fuzz.yml
+  pull_request:
+    paths:
+      - src/**
+      - fuzz/**
+      - CMakeLists.txt
+      - .github/workflows/fuzz.yml
+  schedule:
+    # A longer run than pull requests get, to keep exploring with the growing corpus's help.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: How long to fuzz, in seconds
+        default: "600"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: libFuzzer (ASan + UBSan)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    env:
+      FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '900' || inputs.seconds || '60' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install clang and the libFuzzer runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang zlib1g-dev
+          sudo apt-get install -y -qq "libclang-rt-$(clang -dumpversion | cut -d. -f1)-dev"
+      - name: Build the fuzz target
+        run: |
+          cmake -S . -B build -DNANOFASTQ_FUZZ=ON -DNANOFASTQ_WERROR=ON \
+            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_C_FLAGS="-g -O1 -fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+          cmake --build build --target fuzz_reader
+      - name: Fuzz
+        run: |
+          mkdir -p work crashes
+          cp fuzz/corpus/* work/
+          build/fuzz/fuzz_reader -max_total_time="$FUZZ_SECONDS" -max_len=2048 \
+            -rss_limit_mb=2048 -artifact_prefix=crashes/ work
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-crashes
+          path: crashes/
+          if-no-files-found: ignore

@@ -7,7 +7,11 @@
 #include <string.h>
 #include <zlib.h>
 
+// How much the read buffer grows and refills by. Overridable (-DREAD_CHUNK=64) so the fuzz build
+// can reach buffer growth, compaction and records spanning refills with small inputs.
+#ifndef READ_CHUNK
 #define READ_CHUNK (1 << 20)
+#endif
 #define NO_PIN ((size_t)-1)
 
 struct FastqState {
