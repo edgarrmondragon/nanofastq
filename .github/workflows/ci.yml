@@ -84,7 +84,8 @@ jobs:
           enable-cache: false  # no checkout here, so there is nothing to key the cache on
       - name: Build wheel from the sdist
         shell: bash
-        run: uv build --wheel --out-dir wheelhouse dist/*.tar.gz
+        # NANOFASTQ_WERROR turns warnings in our own C code into errors (GCC/Clang only).
+        run: uv build --wheel -C cmake.define.NANOFASTQ_WERROR=ON --out-dir wheelhouse dist/*.tar.gz
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheel-${{ matrix.os }}

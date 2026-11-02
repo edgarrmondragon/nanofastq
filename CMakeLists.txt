@@ -40,6 +40,19 @@ add_library(fastq_core STATIC src/fastq.c)
 target_include_directories(fastq_core PUBLIC src)
 target_link_libraries(fastq_core PUBLIC nanoarrow::nanoarrow ZLIB::ZLIB)
 
+# Warnings for our own C code only (not nanoarrow, zlib or nanobind). Off by default as errors,
+# because a newer compiler may add warnings that should not break a user's build from source;
+# CI turns it on.
+option(NANOFASTQ_WERROR "Treat warnings in nanofastq's own C code as errors" OFF)
+if(MSVC)
+  target_compile_options(fastq_core PRIVATE /W4)
+else()
+  target_compile_options(fastq_core PRIVATE -Wall -Wextra)
+  if(NANOFASTQ_WERROR)
+    target_compile_options(fastq_core PRIVATE -Werror)
+  endif()
+endif()
+
 nanobind_add_module(_core STABLE_ABI src/module.cc)
 target_link_libraries(_core PRIVATE fastq_core)
 install(TARGETS _core LIBRARY DESTINATION .)
