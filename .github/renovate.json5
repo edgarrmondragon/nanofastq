@@ -1,0 +1,60 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+
+  // https://docs.renovatebot.com/configuration-options/#extends
+  "extends": [
+    // https://github.com/edgarrmondragon/.github/blob/main/renovate/python.json5
+    "edgarrmondragon/.github//renovate/python.json5",
+  ],
+
+  // https://docs.renovatebot.com/configuration-options/#reviewers
+  "reviewers": ["edgarrmondragon"],
+
+  // https://docs.renovatebot.com/configuration-options/#custommanagers
+  "customManagers": [
+    {
+      "description": "Upstream C dependencies downloaded by CMake FetchContent (GitHub archive and release URLs)",
+      "customType": "regex",
+      "managerFilePatterns": ["/^CMakeLists\\.txt$/"],
+      "matchStrings": [
+        // https://github.com/<owner>/<repo>/archive/refs/tags/<prefix><version>.tar.gz
+        "https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/archive/refs/tags/(?<prefix>[^/\\s]*?)(?<currentValue>\\d+(?:\\.\\d+)*)\\.tar\\.gz",
+      ],
+      "datasourceTemplate": "github-releases",
+      // Tags like "apache-arrow-nanoarrow-0.9.0": compare on the bare version, keep the prefix.
+      "extractVersionTemplate": "^{{{prefix}}}(?<version>.+)$",
+    },
+    {
+      "description": "Upstream C dependencies downloaded as GitHub release assets, where the version appears twice in the URL",
+      "customType": "regex",
+      "managerFilePatterns": ["/^CMakeLists\\.txt$/"],
+      "matchStrings": [
+        // https://github.com/<owner>/<repo>/releases/download/<prefix><version>/<name>-<version>.tar.gz
+        "https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<prefix>[^/\\s]*?)(?<currentValue>\\d+(?:\\.\\d+)*)/(?<asset>[^/\\s]*?)\\d+(?:\\.\\d+)*(?<ext>\\.tar\\.gz)",
+      ],
+      "autoReplaceStringTemplate": "https://github.com/{{{depName}}}/releases/download/{{{prefix}}}{{{newValue}}}/{{{asset}}}{{{newValue}}}{{{ext}}}",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^{{{prefix}}}(?<version>.+)$",
+    },
+    {
+      "description": "GitHub-hosted runner images in matrix os lists (runs-on scalars are handled by the github-actions manager)",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        // "os: ubuntu-26.04" or a list item such as "- macos-26-intel  # x86_64"
+        "(?:os:|-)\\s+(?<depName>ubuntu|macos|windows)-(?<currentValue>\\d[^\\s#,\\]]*)",
+      ],
+      "datasourceTemplate": "github-runners",
+    },
+  ],
+
+  // https://docs.renovatebot.com/configuration-options/#packagerules
+  "packageRules": [
+    {
+      "description": "Bump all runner labels together; leave them to manual review since a new image can shift CodSpeed's measurements",
+      "matchDatasources": ["github-runners"],
+      "groupName": "GitHub runner images",
+      "automerge": false,
+    },
+  ],
+}
