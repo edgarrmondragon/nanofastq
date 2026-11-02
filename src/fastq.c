@@ -5,7 +5,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef NANOFASTQ_ZLIB_NG
+// zlib-ng's native (zng_-prefixed) API: statically linked, so the symbols can never be
+// interposed by a different libz already loaded into the process.
+#include <zlib-ng.h>
+#define gzopen zng_gzopen
+#define gzbuffer zng_gzbuffer
+#define gzread zng_gzread
+#define gzerror zng_gzerror
+#define gzclose zng_gzclose
+#else
 #include <zlib.h>
+#endif
 
 // How much the read buffer grows and refills by. Overridable (-DREAD_CHUNK=64) so the fuzz build
 // can reach buffer growth, compaction and records spanning refills with small inputs.

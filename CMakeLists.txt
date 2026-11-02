@@ -12,20 +12,35 @@ option(NANOFASTQ_FUZZ "Build the libFuzzer target instead of the Python extensio
 if(NOT NANOFASTQ_FUZZ)
   find_package(Python 3.12 COMPONENTS Interpreter Development.Module Development.SABIModule REQUIRED)
 endif()
-find_package(ZLIB QUIET)
-if(NOT ZLIB_FOUND)
-  # No system zlib (e.g. Windows): build a static copy.
-  include(FetchContent)
+
+# zlib-ng inflates noticeably faster than the zlib shipped by most Linux distros and than
+# the one we would otherwise need on Windows. macOS ships a tuned system zlib that beats a
+# stock zlib-ng build, so use that there. The fuzz build uses the system zlib too: it is there to
+# test our own parser, and instrumenting a vendored decompressor only slows it down.
+if(APPLE OR NANOFASTQ_FUZZ)
+  set(_zlib_ng_default OFF)
+else()
+  set(_zlib_ng_default ON)
+endif()
+option(NANOFASTQ_ZLIB_NG "Statically link zlib-ng instead of the system zlib" ${_zlib_ng_default})
+
+include(FetchContent)
+if(NANOFASTQ_ZLIB_NG)
   FetchContent_Declare(
-    zlib
-    URL https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    zlib_ng
+    URL https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     EXCLUDE_FROM_ALL)
-  set(ZLIB_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-  set(ZLIB_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-  set(ZLIB_INSTALL OFF CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(zlib)
-  add_library(ZLIB::ZLIB ALIAS zlibstatic)
+  set(ZLIB_COMPAT OFF CACHE BOOL "" FORCE)  # keep the zng_-prefixed API
+  set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+  set(ZLIB_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+  set(WITH_GTEST OFF CACHE BOOL "" FORCE)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(zlib_ng)
+  set(FASTQ_ZLIB_TARGET zlib-ng)
+else()
+  find_package(ZLIB REQUIRED)
+  set(FASTQ_ZLIB_TARGET ZLIB::ZLIB)
 endif()
 
 if(NOT NANOFASTQ_FUZZ)
@@ -35,7 +50,6 @@ if(NOT NANOFASTQ_FUZZ)
   find_package(nanobind CONFIG REQUIRED)
 endif()
 
-include(FetchContent)
 FetchContent_Declare(
   nanoarrow
   URL https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.9.0.tar.gz
@@ -46,7 +60,11 @@ FetchContent_MakeAvailable(nanoarrow)
 
 add_library(fastq_core STATIC src/fastq.c)
 target_include_directories(fastq_core PUBLIC src)
-target_link_libraries(fastq_core PUBLIC nanoarrow::nanoarrow ZLIB::ZLIB)
+target_link_libraries(fastq_core PUBLIC nanoarrow::nanoarrow ${FASTQ_ZLIB_TARGET})
+if(NANOFASTQ_ZLIB_NG)
+  # zlib-ng.h only declares the zng_gz* functions when the consumer defines WITH_GZFILEOP.
+  target_compile_definitions(fastq_core PUBLIC NANOFASTQ_ZLIB_NG WITH_GZFILEOP)
+endif()
 
 # Warnings for our own C code only (not nanoarrow, zlib or nanobind). Off by default as errors,
 # because a newer compiler may add warnings that should not break a user's build from source;
