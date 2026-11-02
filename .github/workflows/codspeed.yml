@@ -1,9 +1,23 @@
 name: CodSpeed
 
 on:
+  # Only when something that can change a benchmark result is touched: the code under test, how
+  # it is built, the benchmarks themselves, or this job (interpreter, runner image).
   push:
     branches: [main]
+    paths:
+      - src/**
+      - CMakeLists.txt
+      - pyproject.toml
+      - benchmarks/test_perf.py
+      - .github/workflows/codspeed.yml
   pull_request:
+    paths:
+      - src/**
+      - CMakeLists.txt
+      - pyproject.toml
+      - benchmarks/test_perf.py
+      - .github/workflows/codspeed.yml
   workflow_dispatch:
 
 permissions: {}
