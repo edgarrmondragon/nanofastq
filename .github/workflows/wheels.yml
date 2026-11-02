@@ -1,13 +1,18 @@
 name: Wheels
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-  pull_request:
-  workflow_dispatch:
+  # Build and publish when a release is published; the tag is created with it, so there is
+  # deliberately no separate tag trigger (it would build everything twice).
   release:
     types: [published]
+  workflow_dispatch:
+  # Only when something that can change the build is touched; ci.yml covers the rest.
+  pull_request:
+    paths:
+      - src/**
+      - CMakeLists.txt
+      - pyproject.toml
+      - .github/workflows/wheels.yml
 
 permissions:
   contents: read
