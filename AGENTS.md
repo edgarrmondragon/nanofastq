@@ -23,5 +23,6 @@ nanofastq is a FASTQ reader written in C (nanoarrow + zlib), wrapped with nanobi
 - The parser validates a whole record (structure, lengths, UTF-8) before appending it, so a bad record never leaves a half-built row. Keep it that way.
 - Output must stay identical to biobear's (`benchmarks/check.py`).
 - Workflow actions are pinned by SHA with a `# vX.Y.Z` comment, and runner images are pinned too; Renovate updates both. zizmor (pedantic) runs in pre-commit.
+- PR titles use Conventional Commits (`feat:`, `fix:`, `ci:`, `chore(deps):`, ...). `.github/semantic.yml` enforces this, and Release Drafter derives labels, sections and version bumps from them.
 - Never name a branch `renovate`: it collides with the Renovate app's `renovate/*` branches.
 - CodSpeed can flag a roughly 12% "regression" on untouched code when the run landed on different hardware. Re-run before chasing it.
