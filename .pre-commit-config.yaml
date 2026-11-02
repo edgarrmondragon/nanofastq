@@ -1,6 +1,11 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 
+ci:
+  autofix_commit_msg: "style: pre-commit fixes"
+  autoupdate_commit_msg: "chore(deps): update pre-commit hooks"
+  autoupdate_schedule: "quarterly"
+
 # Fuzz seeds are binary inputs whose exact bytes matter (e.g. no final newline).
 exclude: ^fuzz/corpus/
 
