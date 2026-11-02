@@ -128,7 +128,7 @@ testpaths = [ "tests" ]
 
 [tool.tox]
 env_list = [
-  { prefix = "3.", start = 12, stop = 15 },
+  { prefix = "3.", start = 12 },
   "type",
 ]
 [tool.tox.env.type]
