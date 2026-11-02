@@ -27,6 +27,7 @@ dev = [
   "pyarrow",
   "pyarrow-stubs>=20.0.0.20260819",
   "pytest",
+  "pytest-codspeed>=5.0.4",
 ]
 
 [tool.scikit-build]
