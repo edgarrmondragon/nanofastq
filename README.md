@@ -36,6 +36,11 @@ publish it: that creates the `vX.Y.Z` tag, builds the wheels and uploads them to
 `.github/workflows/wheels.yml`). Untagged commits get development versions such as
 `0.1.dev12+gabc1234`.
 
+## License
+
+[MIT](LICENSE). The wheels also contain nanoarrow (Apache-2.0), nanobind (BSD-3-Clause) and, on
+Windows, zlib; their notices are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+
 [codspeed]: https://codspeed.io
 [fastq]: https://en.wikipedia.org/wiki/FASTQ_format
 [release drafter]: https://github.com/release-drafter/release-drafter
