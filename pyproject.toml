@@ -127,6 +127,9 @@ minversion = "9"
 testpaths = [ "tests" ]
 
 [tool.tox]
+requires = [
+  "tox>=4.67",
+]
 env_list = [
   { prefix = "3.", start = 12 },
   "type",
