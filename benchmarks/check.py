@@ -1,6 +1,8 @@
 import sys
+
 import biobear as bb
 import pyarrow as pa
+
 import nanofastq
 
 path = sys.argv[1]
@@ -16,5 +18,11 @@ for col in mine.column_names:
     if not a.equals(b):
         for i in range(len(a)):
             if a[i].as_py() != b[i].as_py():
-                print("   first diff at", i, repr(a[i].as_py())[:80], "|", repr(b[i].as_py())[:80])
+                print(
+                    "   first diff at",
+                    i,
+                    repr(a[i].as_py())[:80],
+                    "|",
+                    repr(b[i].as_py())[:80],
+                )
                 break

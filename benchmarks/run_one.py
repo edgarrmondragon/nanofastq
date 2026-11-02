@@ -2,6 +2,7 @@
 
 Imports happen before the timer starts and are reported separately.
 """
+
 import json
 import resource
 import sys
@@ -13,6 +14,7 @@ impl, path = sys.argv[1], sys.argv[2]
 t_imp = time.perf_counter()
 if impl.startswith("nanofastq"):
     import pyarrow as pa
+
     import nanofastq
 elif impl.startswith("biobear"):
     import biobear as bb
@@ -53,4 +55,15 @@ out = run()
 wall = time.perf_counter() - t0
 ru1 = resource.getrusage(resource.RUSAGE_SELF)
 cpu = (ru1.ru_utime - ru0.ru_utime) + (ru1.ru_stime - ru0.ru_stime)
-print(json.dumps({"impl": impl, "wall": wall, "cpu": cpu, "rss_mb": ru1.ru_maxrss / 1e6, "imp": t_imp, "out": out}))
+print(
+    json.dumps(
+        {
+            "impl": impl,
+            "wall": wall,
+            "cpu": cpu,
+            "rss_mb": ru1.ru_maxrss / 1e6,
+            "imp": t_imp,
+            "out": out,
+        }
+    )
+)

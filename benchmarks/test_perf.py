@@ -30,7 +30,12 @@ CASES = {
     "short-gz": (20_000, 36, False, True),
     "long-plain": (200, 10_000, False, False),
     "long-gz": (200, 10_000, False, True),
-    "short-utf8-headers": (20_000, 36, True, False),  # exercises the strict UTF-8 fallback
+    "short-utf8-headers": (  # exercises the strict UTF-8 fallback
+        20_000,
+        36,
+        True,
+        False,
+    ),
 }
 
 
