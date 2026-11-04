@@ -1,0 +1,33 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "library",
+      "bom-ref": "nanofastq",
+      "name": "nanofastq",
+      "licenses": [{"license": {"id": "MIT"}}],
+      "purl": "pkg:pypi/nanofastq"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "nanoarrow",
+      "name": "nanoarrow",
+      "version": "@NANOARROW_VERSION@",
+      "licenses": [{"license": {"id": "Apache-2.0"}}],
+      "purl": "pkg:github/apache/arrow-nanoarrow@@NANOARROW_VERSION@",
+      "externalReferences": [{"type": "distribution", "url": "@_nanoarrow_url@"}]
+    },
+    {
+      "type": "library",
+      "bom-ref": "nanobind",
+      "name": "nanobind",
+      "version": "@NANOBIND_VERSION@",
+      "licenses": [{"license": {"id": "BSD-3-Clause"}}],
+      "purl": "pkg:pypi/nanobind@@NANOBIND_VERSION@"
+    }@NANOFASTQ_SBOM_ZLIB_NG@
+  ]
+}

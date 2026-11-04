@@ -76,6 +76,7 @@ cache-keys = [
   { git = { commit = true, tags = true } },
   { file = "pyproject.toml" },
   { file = "CMakeLists.txt" },
+  { file = "sbom.cdx.json.in" },
   { file = "src/**/*.{c,h,cc}" },
 ]
 

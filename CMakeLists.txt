@@ -26,9 +26,10 @@ option(NANOFASTQ_ZLIB_NG "Statically link zlib-ng instead of the system zlib" ${
 
 include(FetchContent)
 if(NANOFASTQ_ZLIB_NG)
+  set(_zlib_ng_url https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz)
   FetchContent_Declare(
     zlib_ng
-    URL https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz
+    URL ${_zlib_ng_url}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     EXCLUDE_FROM_ALL)
   set(ZLIB_COMPAT OFF CACHE BOOL "" FORCE)  # keep the zng_-prefixed API
@@ -50,9 +51,10 @@ if(NOT NANOFASTQ_FUZZ)
   find_package(nanobind CONFIG REQUIRED)
 endif()
 
+set(_nanoarrow_url https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.9.0.tar.gz)
 FetchContent_Declare(
   nanoarrow
-  URL https://github.com/apache/arrow-nanoarrow/archive/refs/tags/apache-arrow-nanoarrow-0.9.0.tar.gz
+  URL ${_nanoarrow_url}
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   EXCLUDE_FROM_ALL)  # keep nanoarrow's headers/libs out of the wheel
 set(NANOARROW_NAMESPACE "NanoFastq")
@@ -88,4 +90,29 @@ else()
   nanobind_add_module(_core STABLE_ABI src/module.cc)
   target_link_libraries(_core PRIVATE fastq_core)
   install(TARGETS _core LIBRARY DESTINATION .)
+
+  # PEP 770: an SBOM of what is compiled into the wheel, in .dist-info/sboms/. The versions are
+  # read from the download URLs above, which Renovate keeps current, so they cannot drift.
+  string(REGEX MATCH "[0-9]+(\\.[0-9]+)+" NANOARROW_VERSION "${_nanoarrow_url}")
+  execute_process(
+    COMMAND "${Python_EXECUTABLE}" -c "import nanobind; print(nanobind.__version__)"
+    OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE NANOBIND_VERSION COMMAND_ERROR_IS_FATAL ANY)
+  if(NANOFASTQ_ZLIB_NG)
+    string(REGEX MATCH "[0-9]+(\\.[0-9]+)+" ZLIB_NG_VERSION "${_zlib_ng_url}")
+    set(NANOFASTQ_SBOM_ZLIB_NG
+        ",
+    {
+      \"type\": \"library\",
+      \"bom-ref\": \"zlib-ng\",
+      \"name\": \"zlib-ng\",
+      \"version\": \"${ZLIB_NG_VERSION}\",
+      \"licenses\": [{\"license\": {\"id\": \"Zlib\"}}],
+      \"purl\": \"pkg:github/zlib-ng/zlib-ng@${ZLIB_NG_VERSION}\",
+      \"externalReferences\": [{\"type\": \"distribution\", \"url\": \"${_zlib_ng_url}\"}]
+    }")
+  else()
+    set(NANOFASTQ_SBOM_ZLIB_NG "")
+  endif()
+  configure_file(sbom.cdx.json.in "${CMAKE_CURRENT_BINARY_DIR}/sbom.cdx.json" @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/sbom.cdx.json" DESTINATION "${SKBUILD_METADATA_DIR}/sboms")
 endif()
