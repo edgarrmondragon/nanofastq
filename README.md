@@ -14,6 +14,29 @@ from nanofastq import read_fastq
 table = pa.table(read_fastq("reads.fastq.gz"))
 ```
 
+## Examples
+
+### Load into DuckDB
+
+```python
+import duckdb
+from nanofastq import read_fastq
+
+duckdb.register("fastq", read_fastq("example.fastq"))
+duckdb.sql("select * from fastq").fetchall()
+```
+
+### Load into a Polars dataframe
+
+Note: this also requires installing PyArrow.
+
+```python
+import polars as pl
+from nanofastq import read_fastq
+
+df = pl.DataFrame(read_fastq("example.fastq"))
+```
+
 ## Development
 
 Run the tests and the type check with [ty] (requires [Tox]):
