@@ -39,10 +39,10 @@ jobs:
     name: Type Checking
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: astral-sh/setup-uv@v10.3.3
       - name: Type Checking
         run: uvx --with tox-uv tox run -e type
 
@@ -52,11 +52,11 @@ jobs:
     outputs:
       supported-python-versions: ${{ steps.baipp.outputs.supported_python_classifiers_json_array }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0  # the version is derived from git tags
           persist-credentials: false
-      - uses: hynek/build-and-inspect-python-package@67230f7b8410ae0052b39c1efc89d89fff43ff10 # v3.0.2
+      - uses: hynek/build-and-inspect-python-package@v3.0.2
         id: baipp
         with:
           skip-wheel: 'true'
@@ -73,11 +73,11 @@ jobs:
         - macos-26
         - windows-2025
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/download-artifact@v8.0.2
         with:
           name: Packages
           path: dist
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           # The lowest supported Python: the abi3 wheel built here must run on all newer ones.
           python-version: ${{ fromJson(needs.build-package.outputs.supported-python-versions)[0] }}
@@ -106,14 +106,14 @@ jobs:
         # Derived from the package's "Programming Language :: Python :: 3.x" classifiers.
         python-version: ${{ fromJson(needs.build-package.outputs.supported-python-versions) }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/download-artifact@v8.0.2
         with:
           name: wheel-${{ matrix.os }}
           path: wheelhouse
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Test

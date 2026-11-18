@@ -93,6 +93,9 @@ select = "*-musllinux*"
 test-command = "python -c 'import nanofastq'"
 test-requires = []
 
+[tool.ruff]
+required-version = ">=0.17.5"
+preview = true
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
   "docstring-missing-returns",
@@ -102,7 +105,7 @@ test-requires = []
 "benchmarks/*" = [
   "magic-value-comparison",
   "missing-return-type-private-function",
-  "missing-return-type-undocumented-public-function",
+  "missing-return-type-public-function",
   "undocumented-public-function",
 ]
 [tool.ruff.lint.flake8-copyright]

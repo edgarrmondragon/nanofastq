@@ -38,7 +38,7 @@ jobs:
     env:
       FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '900' || inputs.seconds || '60' }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Install clang and the libFuzzer runtime
@@ -60,7 +60,7 @@ jobs:
             -rss_limit_mb=2048 -artifact_prefix=crashes/ work
       - name: Keep the failing input
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: fuzz-crashes
           path: crashes/
