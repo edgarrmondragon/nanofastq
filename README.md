@@ -64,7 +64,7 @@ publish it: that creates the `vX.Y.Z` tag, builds the wheels and uploads them to
 ## License
 
 [MIT](LICENSE). The wheels also contain nanoarrow (Apache-2.0), nanobind (BSD-3-Clause) and, on
-Windows, zlib; their notices are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+Windows and Pyodide, zlib; their notices are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
 [codspeed]: https://codspeed.io
 [fastq]: https://en.wikipedia.org/wiki/FASTQ_format

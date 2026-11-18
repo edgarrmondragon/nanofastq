@@ -9,15 +9,26 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # sanitizers; see fuzz/CMakeLists.txt.
 option(NANOFASTQ_FUZZ "Build the libFuzzer target instead of the Python extension" OFF)
 
+# Pyodide (Emscripten) pins one Python per release and has no abi3 wheels, so build a
+# version-specific module there.
+if(EMSCRIPTEN)
+  set(_python_components Interpreter Development.Module)
+  set(_stable_abi "")
+else()
+  set(_python_components Interpreter Development.Module Development.SABIModule)
+  set(_stable_abi STABLE_ABI)
+endif()
+
 if(NOT NANOFASTQ_FUZZ)
-  find_package(Python 3.12 COMPONENTS Interpreter Development.Module Development.SABIModule REQUIRED)
+  find_package(Python 3.12 COMPONENTS ${_python_components} REQUIRED)
 endif()
 
 # zlib-ng inflates noticeably faster than the zlib shipped by most Linux distros and than
 # the one we would otherwise need on Windows. macOS ships a tuned system zlib that beats a
 # stock zlib-ng build, so use that there. The fuzz build uses the system zlib too: it is there to
-# test our own parser, and instrumenting a vendored decompressor only slows it down.
-if(APPLE OR NANOFASTQ_FUZZ)
+# test our own parser, and instrumenting a vendored decompressor only slows it down. On Emscripten
+# (Pyodide) zlib-ng's SIMD paths do not apply, so use Emscripten's zlib port.
+if(APPLE OR EMSCRIPTEN OR NANOFASTQ_FUZZ)
   set(_zlib_ng_default OFF)
 else()
   set(_zlib_ng_default ON)
@@ -39,6 +50,11 @@ if(NANOFASTQ_ZLIB_NG)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(zlib_ng)
   set(FASTQ_ZLIB_TARGET zlib-ng)
+elseif(EMSCRIPTEN)
+  add_library(emscripten_zlib INTERFACE)
+  target_compile_options(emscripten_zlib INTERFACE -sUSE_ZLIB=1)
+  target_link_options(emscripten_zlib INTERFACE -sUSE_ZLIB=1)
+  set(FASTQ_ZLIB_TARGET emscripten_zlib)
 else()
   find_package(ZLIB REQUIRED)
   set(FASTQ_ZLIB_TARGET ZLIB::ZLIB)
@@ -87,7 +103,7 @@ if(NANOFASTQ_FUZZ)
   target_compile_definitions(fastq_core PRIVATE READ_CHUNK=64)
   add_subdirectory(fuzz)
 else()
-  nanobind_add_module(_core STABLE_ABI src/module.cc)
+  nanobind_add_module(_core ${_stable_abi} src/module.cc)
   target_link_libraries(_core PRIVATE fastq_core)
   install(TARGETS _core LIBRARY DESTINATION .)
 
