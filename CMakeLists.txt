@@ -51,9 +51,10 @@ if(NANOFASTQ_ZLIB_NG)
   FetchContent_MakeAvailable(zlib_ng)
   set(FASTQ_ZLIB_TARGET zlib-ng)
 elseif(EMSCRIPTEN)
+  # Pyodide's main binary already has zlib and exports its symbols to extension modules, so
+  # only the headers are needed (from Emscripten's port); the gz* calls resolve at load time.
   add_library(emscripten_zlib INTERFACE)
   target_compile_options(emscripten_zlib INTERFACE -sUSE_ZLIB=1)
-  target_link_options(emscripten_zlib INTERFACE -sUSE_ZLIB=1)
   set(FASTQ_ZLIB_TARGET emscripten_zlib)
 else()
   find_package(ZLIB REQUIRED)

@@ -6,10 +6,10 @@ extension module. It is distributed under its own license, reproduced below.
 
   1. nanoarrow          Apache License 2.0   https://github.com/apache/arrow-nanoarrow
   2. nanobind           BSD-3-Clause         https://github.com/wjakob/nanobind
-  3. zlib (Windows, Pyodide)  zlib license  https://github.com/madler/zlib
+  3. zlib (Windows)     zlib license         https://github.com/madler/zlib
 
 The Linux and macOS wheels link the operating system's zlib dynamically instead of
-including it. The Windows wheels also redistribute the Microsoft Visual C++ runtime.
+including it, and the Pyodide wheels use the zlib built into the Pyodide runtime. The Windows wheels also redistribute the Microsoft Visual C++ runtime.
 
 
 ==============================================================================
@@ -272,7 +272,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
-3. zlib (statically linked in the Windows and Pyodide wheels)
+3. zlib (statically linked in the Windows wheels)
 ==============================================================================
 
 https://github.com/madler/zlib
