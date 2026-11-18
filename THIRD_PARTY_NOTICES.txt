@@ -9,7 +9,7 @@ extension module. It is distributed under its own license, reproduced below.
   3. zlib (Windows)     zlib license         https://github.com/madler/zlib
 
 The Linux and macOS wheels link the operating system's zlib dynamically instead of
-including it. The Windows wheels also redistribute the Microsoft Visual C++ runtime.
+including it, and the Pyodide wheels use the zlib built into the Pyodide runtime. The Windows wheels also redistribute the Microsoft Visual C++ runtime.
 
 
 ==============================================================================
