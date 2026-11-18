@@ -46,6 +46,7 @@ Source = "https://github.com/edgarrmondragon/nanofastq"
 [dependency-groups]
 dev = [
   "duckdb",
+  "memray>=1.20; sys_platform!='win32'",
   "mypy",
   "polars",
   "pyarrow",
