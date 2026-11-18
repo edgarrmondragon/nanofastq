@@ -82,11 +82,14 @@ cache-keys = [
 ]
 
 [tool.cibuildwheel]
-# One abi3 wheel (cp312-abi3) per platform covers every supported Python. Pyodide has no cp312
-# and no abi3: each Pyodide release pins one Python, so it gets one wheel per Python.
-build = [ "cp312-*", "*-pyodide_wasm32" ]
-# cp315 on Pyodide targets an alpha Pyodide (pre-release ABI, no pyarrow to test with yet).
-skip = "*-win32 *_i686 cp315-pyodide_wasm32"
+build = [
+  # One abi3 wheel (cp312-abi3) per platform covers every supported Python.
+  "cp312-*",
+  # Each Pyodide release pins one Python, so it gets one wheel per Python.
+  # cp315 on Pyodide targets an alpha Pyodide (pre-release ABI, no pyarrow to test with yet).
+  "cp314-pyodide_wasm32",
+]
+skip = "*-win32 *_i686"
 test-command = "pytest {project}/tests"
 test-requires = [ "pytest", "pyarrow", "polars", "duckdb" ]
 [tool.cibuildwheel.pyodide]
