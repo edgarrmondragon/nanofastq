@@ -99,9 +99,9 @@ else()
 endif()
 
 if(NANOFASTQ_FUZZ)
-  # A tiny read buffer makes growth, compaction and records spanning refills reachable from the
-  # small inputs a fuzzer produces; with the default 1 MiB they would need a 1 MiB input.
-  target_compile_definitions(fastq_core PRIVATE READ_CHUNK=64)
+  # Tiny buffers make growth, compaction and records spanning refills reachable from the small
+  # inputs a fuzzer produces; with the defaults (1 MiB, 256 KiB) they would need inputs that big.
+  target_compile_definitions(fastq_core PRIVATE READ_CHUNK=64 IN_CHUNK=16)
   add_subdirectory(fuzz)
 else()
   nanobind_add_module(_core ${_stable_abi} src/module.cc)

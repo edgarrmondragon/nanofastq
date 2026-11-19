@@ -24,8 +24,11 @@
 #define READ_CHUNK (1 << 20)
 #endif
 #define NO_PIN ((size_t)-1)
-// How much raw (compressed) input is read from the source at a time.
+// How much raw (compressed) input is read from the source at a time. Overridable like
+// READ_CHUNK, so the fuzz build fills the input buffer and carries bytes over between members.
+#ifndef IN_CHUNK
 #define IN_CHUNK (1 << 18)
+#endif
 
 // What the decoder is doing with the source's bytes.
 enum DecodeMode {
