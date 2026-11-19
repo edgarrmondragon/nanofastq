@@ -5,9 +5,10 @@ nanofastq is a FASTQ reader written in C (nanoarrow + zlib), wrapped with nanobi
 ## Layout
 
 - `src/fastq.c`, `src/fastq.h`: the parser, which builds Arrow record batches.
-- `src/module.cc`: the nanobind wrapper (`open_stream`).
+- `src/module.cc`: the nanobind wrapper (`open_stream` for paths, `open_file_stream` for file objects).
 - `src/nanofastq/`: the Python API. `_core.pyi` is a hand-written stub for the compiled module.
 - `tests/`: pytest. `benchmarks/`: CodSpeed benchmarks (`test_perf.py`) and a biobear comparison (see its README).
+- `recipes/`: copy-paste helpers for users, not part of the package. CI skips them (the Pyodide one needs a browser with JSPI), so check changes by hand.
 
 ## Commands
 
