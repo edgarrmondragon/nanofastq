@@ -77,6 +77,7 @@ class FastqReader:
     def __init__(
         self,
         source: str | os.PathLike[str] | BinaryReadable,
+        /,
         batch_size: int = 65536,
     ) -> None:
         self._batch_size = batch_size
@@ -118,6 +119,7 @@ class FastqReader:
 
 def read_fastq(
     source: str | os.PathLike[str] | BinaryReadable,
+    /,
     batch_size: int = 65536,
 ) -> FastqReader:
     """Read a FASTQ file, or a binary file object, into an Arrow array stream.
