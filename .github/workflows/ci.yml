@@ -15,6 +15,8 @@ on:
       - .github/renovate.json5
       - .github/workflows/codspeed.yml
       - benchmarks/**
+      - fuzz/**
+      - recipes/**
   pull_request:
     paths-ignore:
       - AGENTS.md
@@ -22,6 +24,8 @@ on:
       - .github/renovate.json5
       - .github/workflows/codspeed.yml
       - benchmarks/**
+      - fuzz/**
+      - recipes/**
   workflow_dispatch:
   schedule:
     # Catch breakage from new dependency releases (pyarrow, polars, duckdb, ...).

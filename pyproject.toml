@@ -116,6 +116,8 @@ preview = true
   "undocumented-public-init",
   "undocumented-public-method",
 ]
+# Copy-paste files, not a package.
+"recipes/*" = [ "implicit-namespace-package" ]
 "benchmarks/*" = [
   "magic-value-comparison",
   "missing-return-type-private-function",
