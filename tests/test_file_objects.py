@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import gzip
 import io
+import sys
 import threading
 from typing import TYPE_CHECKING, Any, cast, override
 
@@ -201,6 +202,7 @@ def test_truncated_gzip() -> None:
         pa.table(read_fastq(io.BytesIO(gz[: len(gz) // 2])))
 
 
+@pytest.mark.skipif(sys.platform == "emscripten", reason="Pyodide has no threads")
 def test_read_from_another_thread() -> None:
     result: list[pa.Table] = []
     r = read_fastq(ReadOnly(gzip.compress(DATA), chunk=1000), batch_size=10)
