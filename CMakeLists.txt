@@ -46,13 +46,14 @@ if(NANOFASTQ_ZLIB_NG)
   set(ZLIB_COMPAT OFF CACHE BOOL "" FORCE)  # keep the zng_-prefixed API
   set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
   set(ZLIB_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+  set(WITH_GZFILEOP OFF CACHE BOOL "" FORCE)  # only inflate is used, not the gz* file API
   set(WITH_GTEST OFF CACHE BOOL "" FORCE)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(zlib_ng)
   set(FASTQ_ZLIB_TARGET zlib-ng)
 elseif(EMSCRIPTEN)
   # Pyodide's main binary already has zlib and exports its symbols to extension modules, so
-  # only the headers are needed (from Emscripten's port); the gz* calls resolve at load time.
+  # only the headers are needed (from Emscripten's port); the zlib calls resolve at load time.
   add_library(emscripten_zlib INTERFACE)
   target_compile_options(emscripten_zlib INTERFACE -sUSE_ZLIB=1)
   set(FASTQ_ZLIB_TARGET emscripten_zlib)
@@ -81,8 +82,7 @@ add_library(fastq_core STATIC src/fastq.c)
 target_include_directories(fastq_core PUBLIC src)
 target_link_libraries(fastq_core PUBLIC nanoarrow::nanoarrow ${FASTQ_ZLIB_TARGET})
 if(NANOFASTQ_ZLIB_NG)
-  # zlib-ng.h only declares the zng_gz* functions when the consumer defines WITH_GZFILEOP.
-  target_compile_definitions(fastq_core PUBLIC NANOFASTQ_ZLIB_NG WITH_GZFILEOP)
+  target_compile_definitions(fastq_core PUBLIC NANOFASTQ_ZLIB_NG)
 endif()
 
 # Warnings for our own C code only (not nanoarrow, zlib or nanobind). Off by default as errors,

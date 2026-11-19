@@ -9,11 +9,11 @@
 // zlib-ng's native (zng_-prefixed) API: statically linked, so the symbols can never be
 // interposed by a different libz already loaded into the process.
 #include <zlib-ng.h>
-#define gzopen zng_gzopen
-#define gzbuffer zng_gzbuffer
-#define gzread zng_gzread
-#define gzerror zng_gzerror
-#define gzclose zng_gzclose
+#define z_stream zng_stream
+#define inflateInit2 zng_inflateInit2
+#define inflate zng_inflate
+#define inflateReset zng_inflateReset
+#define inflateEnd zng_inflateEnd
 #else
 #include <zlib.h>
 #endif
@@ -24,9 +24,28 @@
 #define READ_CHUNK (1 << 20)
 #endif
 #define NO_PIN ((size_t)-1)
+// How much raw (compressed) input is read from the source at a time.
+#define IN_CHUNK (1 << 18)
+
+// What the decoder is doing with the source's bytes.
+enum DecodeMode {
+  MODE_SNIFF,   // at the start of the input or after a gzip member: look for the gzip magic
+  MODE_PLAIN,   // not gzip: pass the bytes through
+  MODE_GZIP,    // inside a gzip member
+  MODE_DONE,    // the end of the input
+  MODE_FAILED,  // a read or decompression error, in decode_error; reported again on every call
+};
 
 struct FastqState {
-  gzFile file;
+  struct NanoFastqSource source;
+  // Decoder. zs.next_in/avail_in is the unconsumed part of `in` in every mode, not just gzip.
+  z_stream zs;
+  int zs_ready;  // inflateInit2 succeeded, so inflateEnd is due
+  enum DecodeMode mode;
+  int members;  // gzip members fully decoded so far
+  int in_eof;   // the source returned 0
+  unsigned char* in;
+  char decode_error[200];
   int64_t batch_size;
   int64_t record_no;
   int done;
@@ -117,6 +136,110 @@ static int IsAscii(const char* data, size_t n) {
   return ((acc & 0x8080808080808080ULL) | (tail & 0x80)) == 0;
 }
 
+// Moves the unconsumed input to the front of `in` and reads from the source until at least `want`
+// bytes are buffered or the source ends. Returns 0, or -1 with decode_error set.
+static int FillInput(struct FastqState* s, size_t want) {
+  if (s->zs.avail_in > 0 && s->zs.next_in != s->in) {
+    memmove(s->in, s->zs.next_in, s->zs.avail_in);
+  }
+  s->zs.next_in = s->in;
+  while (s->zs.avail_in < want && !s->in_eof) {
+    int64_t got = s->source.read(s->source.ctx, s->in + s->zs.avail_in, IN_CHUNK - s->zs.avail_in,
+                                 s->decode_error, sizeof(s->decode_error));
+    if (got < 0) return -1;
+    if (got == 0) s->in_eof = 1;
+    s->zs.avail_in += (unsigned)got;
+  }
+  return 0;
+}
+
+// Records a decoding failure. It sticks: every later Decode call reports it again.
+static size_t DecodeFail(struct FastqState* s, const char* msg, size_t produced, int* failed) {
+  if (msg) snprintf(s->decode_error, sizeof(s->decode_error), "%s", msg);
+  s->mode = MODE_FAILED;
+  *failed = 1;
+  return produced;
+}
+
+// Writes up to n decoded bytes to out and returns how many (0 at the end of the input). Input
+// that starts with the gzip magic is decompressed, anything else is passed through, which is
+// what gzread did. Concatenated gzip members (bgzip) are read one after another, and bytes after
+// the last member that are not another member are ignored, also like gzread.
+//
+// On a read or decompression error *failed is set and decode_error holds the message. The bytes
+// decoded before the error are still returned with it, so the records before a truncation or a
+// corrupt block are delivered first.
+static size_t Decode(struct FastqState* s, unsigned char* out, size_t n, int* failed) {
+  *failed = 0;
+  for (;;) {
+    switch (s->mode) {
+      case MODE_SNIFF:
+        if (FillInput(s, 2) != 0) return DecodeFail(s, NULL, 0, failed);
+        if (s->zs.avail_in >= 2 && s->in[0] == 0x1f && s->in[1] == 0x8b) {
+          int rc;
+          if (s->zs_ready) {
+            rc = inflateReset(&s->zs);
+          } else {
+            rc = inflateInit2(&s->zs, 16 + 15);  // gzip wrapper, 32 KiB window
+            s->zs_ready = rc == Z_OK;
+          }
+          if (rc != Z_OK) return DecodeFail(s, "cannot start decompressing", 0, failed);
+          s->mode = MODE_GZIP;
+        } else {
+          s->mode = s->members > 0 ? MODE_DONE : MODE_PLAIN;
+        }
+        break;
+
+      case MODE_PLAIN:
+        if (s->zs.avail_in > 0) {  // the bytes read while sniffing
+          size_t k = s->zs.avail_in < n ? s->zs.avail_in : n;
+          memcpy(out, s->zs.next_in, k);
+          s->zs.next_in += k;
+          s->zs.avail_in -= (unsigned)k;
+          return k;
+        }
+        if (s->in_eof) return 0;
+        {
+          // Straight into the caller's buffer: no copy for uncompressed input.
+          int64_t got = s->source.read(s->source.ctx, out, n, s->decode_error,
+                                       sizeof(s->decode_error));
+          if (got < 0) return DecodeFail(s, NULL, 0, failed);
+          if (got == 0) s->in_eof = 1;
+          return (size_t)got;
+        }
+
+      case MODE_GZIP: {
+        if (s->zs.avail_in == 0 && FillInput(s, 1) != 0) return DecodeFail(s, NULL, 0, failed);
+        s->zs.next_out = out;
+        s->zs.avail_out = (unsigned)n;
+        int rc = inflate(&s->zs, Z_NO_FLUSH);
+        size_t produced = n - s->zs.avail_out;
+        if (rc == Z_STREAM_END) {
+          s->members++;
+          s->mode = MODE_SNIFF;
+        } else if (rc == Z_BUF_ERROR && s->zs.avail_in == 0 && s->in_eof) {
+          // The input ended inside a member: a truncated file or a missing trailer.
+          return DecodeFail(s, "unexpected end of file", produced, failed);
+        } else if (rc != Z_OK && rc != Z_BUF_ERROR) {
+          const char* msg = rc == Z_MEM_ERROR ? "out of memory"
+                            : s->zs.msg       ? s->zs.msg
+                                              : "invalid compressed data";
+          return DecodeFail(s, msg, produced, failed);
+        }
+        if (produced > 0) return produced;
+        break;  // consumed input without output yet (a header, or a member just ended)
+      }
+
+      case MODE_DONE:
+        return 0;
+
+      case MODE_FAILED:
+        *failed = 1;
+        return 0;
+    }
+  }
+}
+
 // Returns 1 with the line's offset into buf and length (without the trailing \n or
 // \r\n), 0 on EOF, -1 on error. Offsets, unlike pointers, survive later calls as long
 // as they are taken relative to s->pin.
@@ -151,22 +274,16 @@ static int NextLine(struct FastqState* s, size_t* off, size_t* len) {
       s->buf = nb;
       s->cap = new_cap;
     }
-    int got = gzread(s->file, s->buf + s->end, (unsigned)(s->cap - s->end));
-    // Ask for the error status after every read, not only after a short or empty one. A gzip
-    // stream that ends early (a truncated download, or a missing trailer) makes gzread return
-    // what it has, with Z_BUF_ERROR set on the file rather than a negative return. zlib 1.3.1
-    // and older leave that error in place, but 1.3.2 clears it at the start of the next call, so
-    // by the time gzread returns 0 it is gone and the missing records would be dropped silently.
-    int zerr = Z_OK;
-    const char* msg = gzerror(s->file, &zerr);
-    if (got < 0 || (zerr != Z_OK && zerr != Z_STREAM_END)) {
-      if (got <= 0) {
-        snprintf(s->error, sizeof(s->error), "read error: %.200s", msg);
+    int failed;
+    size_t got = Decode(s, (unsigned char*)s->buf + s->end, s->cap - s->end, &failed);
+    if (failed) {
+      if (got == 0) {
+        snprintf(s->error, sizeof(s->error), "read error: %.200s", s->decode_error);
         return -1;
       }
       // The same call also returned data. Keep it so the records before the failure are still
       // delivered, and raise the error once they have been consumed.
-      snprintf(s->read_error, sizeof(s->read_error), "read error: %.200s", msg);
+      snprintf(s->read_error, sizeof(s->read_error), "read error: %.200s", s->decode_error);
       s->read_failed = 1;
     }
     if (got == 0) {
@@ -179,7 +296,7 @@ static int NextLine(struct FastqState* s, size_t* off, size_t* len) {
       *len = n;
       return 1;
     }
-    s->end += (size_t)got;
+    s->end += got;
   }
 }
 
@@ -378,34 +495,65 @@ static const char* GetLastError(struct ArrowArrayStream* stream) {
 
 static void Release(struct ArrowArrayStream* stream) {
   struct FastqState* s = stream->private_data;
-  if (s->file) gzclose(s->file);
+  if (s->zs_ready) inflateEnd(&s->zs);
+  if (s->source.release) s->source.release(s->source.ctx);
+  free(s->in);
   if (s->schema.release) s->schema.release(&s->schema);
   free(s->buf);
   free(s);
   stream->release = NULL;
 }
 
+static int64_t FileRead(void* ctx, void* buf, size_t n, char* err, size_t err_len) {
+  FILE* f = ctx;
+  size_t got = fread(buf, 1, n, f);
+  if (got == 0 && ferror(f)) {
+    snprintf(err, err_len, "%s", strerror(errno));
+    return -1;
+  }
+  return (int64_t)got;
+}
+
+static void FileRelease(void* ctx) { fclose(ctx); }
+
 int NanoFastqOpen(const char* path, int64_t batch_size, struct ArrowArrayStream* out,
                   struct ArrowError* err) {
+  FILE* f = fopen(path, "rb");
+  if (!f) {
+    ArrowErrorSet(err, "cannot open '%s'", path);
+    return ENOENT;
+  }
+  setvbuf(f, NULL, _IONBF, 0);  // the decoder reads in large chunks and has its own buffers
+  struct NanoFastqSource source = {FileRead, FileRelease, f};
+  return NanoFastqOpenSource(source, batch_size, out, err);
+}
+
+int NanoFastqOpenSource(struct NanoFastqSource source, int64_t batch_size,
+                        struct ArrowArrayStream* out, struct ArrowError* err) {
   if (batch_size <= 0) {
     ArrowErrorSet(err, "batch_size must be positive");
+    if (source.release) source.release(source.ctx);
     return EINVAL;
   }
   struct FastqState* s = calloc(1, sizeof(*s));
-  if (!s) return ENOMEM;
+  if (!s) {
+    if (source.release) source.release(source.ctx);
+    return ENOMEM;
+  }
+  s->source = source;  // released with the stream from here on, including on failure below
   s->batch_size = batch_size;
   s->pin = NO_PIN;
   s->cap = 2 * READ_CHUNK;
   s->buf = malloc(s->cap);
-  s->file = gzopen(path, "rb");  // transparently reads uncompressed files too
-  if (!s->buf || !s->file) {
-    ArrowErrorSet(err, "cannot open '%s'", path);
-    if (s->file) gzclose(s->file);
-    free(s->buf);
-    free(s);
-    return ENOENT;
+  s->in = malloc(IN_CHUNK);
+  s->zs.next_in = s->in;
+  if (!s->buf || !s->in) {
+    ArrowErrorSet(err, "out of memory");
+    struct ArrowArrayStream tmp = {0};
+    tmp.private_data = s;
+    Release(&tmp);
+    return ENOMEM;
   }
-  gzbuffer(s->file, 1 << 18);
 
   ArrowSchemaInit(&s->schema);
   int rc = ArrowSchemaSetTypeStruct(&s->schema, 4);

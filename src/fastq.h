@@ -14,6 +14,22 @@ extern "C" {
 int NanoFastqOpen(const char* path, int64_t batch_size, struct ArrowArrayStream* out,
                   struct ArrowError* err);
 
+/// Where the (optionally gzip-compressed) bytes come from.
+struct NanoFastqSource {
+  /// Reads up to `n` bytes into `buf`. Returns how many were read (0 only at the end of the
+  /// input), or -1 after writing a message of at most `err_len` bytes to `err`.
+  int64_t (*read)(void* ctx, void* buf, size_t n, char* err, size_t err_len);
+  /// Frees `ctx`. Called exactly once; may be NULL.
+  void (*release)(void* ctx);
+  void* ctx;
+};
+
+/// Like NanoFastqOpen, but reads from `source`. Takes ownership of it whether or not it
+/// succeeds: `source.release` is called when the stream is released, or before returning an
+/// error.
+int NanoFastqOpenSource(struct NanoFastqSource source, int64_t batch_size,
+                        struct ArrowArrayStream* out, struct ArrowError* err);
+
 #ifdef __cplusplus
 }
 #endif
