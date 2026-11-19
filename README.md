@@ -45,6 +45,25 @@ If the file object is [_seekable_][py-seekable], every scan starts from the posi
 
 If it is not seekable (a pipe, `sys.stdin.buffer`, an HTTP response), it can only be scanned once: starting a second scan after the first has read data raises `ValueError`. Opening a stream without reading from it, as DuckDB does to get the schema, doesn't count.
 
+### Pyodide and JupyterLite
+
+nanofastq has wheels for Pyodide (Python 3.14). Install it with `await micropip.install("nanofastq")`, or `%pip install nanofastq` in JupyterLite.
+
+A browser gives Python no sockets, so `urllib.request` and `requests` cannot download a file there. Fetch it with the browser instead and read it from memory:
+
+```python
+import io
+
+from pyodide.http import pyfetch
+from nanofastq import read_fastq
+
+url = "https://raw.githubusercontent.com/biopython/biopython/master/Tests/Quality/example.fastq"
+resp = await pyfetch(url)
+records = read_fastq(io.BytesIO(await resp.bytes()))
+```
+
+This downloads the whole file before reading it, but only the downloaded bytes are kept: for a `.fastq.gz` that is the compressed size, and decompressing and parsing still stream one batch at a time. The server must allow cross-origin requests (`raw.githubusercontent.com` does).
+
 ## Development
 
 Run the tests and the type check with [ty] (requires [Tox]):
