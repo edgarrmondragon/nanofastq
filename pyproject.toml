@@ -113,6 +113,8 @@ preview = true
   "docstring-missing-returns",
   "magic-value-comparison",
   "undocumented-public-function",
+  "undocumented-public-init",
+  "undocumented-public-method",
 ]
 "benchmarks/*" = [
   "magic-value-comparison",
@@ -125,6 +127,10 @@ author = "Edgar Ramírez-Mondragón"
 min-file-size = 40
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+[tool.ruff.lint.pylint]
+allow-dunder-method-names = [
+  "__arrow_c_stream__", # https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html#arrowstream-export
+]
 [tool.ruff.lint]
 select = [
   "complexity",

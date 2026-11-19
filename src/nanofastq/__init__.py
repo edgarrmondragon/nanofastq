@@ -4,6 +4,6 @@
 
 from __future__ import annotations
 
-from nanofastq._reader import FastqReader, read_fastq
+from nanofastq._reader import BinaryReadable, FastqReader, read_fastq
 
-__all__ = ["FastqReader", "read_fastq"]
+__all__ = ["BinaryReadable", "FastqReader", "read_fastq"]
