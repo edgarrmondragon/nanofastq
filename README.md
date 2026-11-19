@@ -37,6 +37,14 @@ from nanofastq import read_fastq
 df = pl.DataFrame(read_fastq("example.fastq"))
 ```
 
+### Reading file-like objects
+
+Starting with nanofastq v0.0.5, `read_fastq` also accepts a binary file object (anything with `read(n) -> bytes`), such as an open file, `io.BytesIO`, an fsspec file or an HTTP response. Gzip is detected from the content. The file is not closed for you.
+
+If the file object is [_seekable_][py-seekable], every scan starts from the position it had when `read_fastq` was called (as reported by [`.tell()`][py-tell]), whether or not the position moved in between. So the result can be scanned more than once, and two readers can read the same file object without affecting each other.
+
+If it is not seekable (a pipe, `sys.stdin.buffer`, an HTTP response), it can only be scanned once: starting a second scan after the first has read data raises `ValueError`. Opening a stream without reading from it, as DuckDB does to get the schema, doesn't count.
+
 ## Development
 
 Run the tests and the type check with [ty] (requires [Tox]):
@@ -68,6 +76,8 @@ Windows, zlib; their notices are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICE
 
 [codspeed]: https://codspeed.io
 [fastq]: https://en.wikipedia.org/wiki/FASTQ_format
+[py-seekable]: https://docs.python.org/3/library/io.html#io.IOBase.seekable
+[py-tell]: https://docs.python.org/3/library/io.html#io.IOBase.tell
 [release drafter]: https://github.com/release-drafter/release-drafter
 [setuptools-scm]: https://setuptools-scm.readthedocs.io
 [tox]: https://tox.wiki
