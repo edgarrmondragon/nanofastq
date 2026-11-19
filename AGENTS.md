@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Work in small pieces.** Break every change into pieces small enough that each one can be explained to the human maintainer on its own. Explain each piece to them before you commit it.
+
 nanofastq is a FASTQ reader written in C (nanoarrow + zlib), wrapped with nanobind, that exposes the Arrow PyCapsule stream interface (`__arrow_c_stream__`).
 
 ## Layout
